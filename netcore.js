@@ -10,7 +10,8 @@ var nc,
     gadDrvs = {},
     ipsoDefs = ['dIn', 'dOut', 'aIn', 'aOut', 'generic', 'illuminance', 'presence', 'temperature',
         'humidity', 'pwrMea', 'actuation', 'setPoint', 'loadCtrl', 'lightCtrl', 'pwrCtrl', 
-        'accelerometer', 'magnetometer', 'barometer'];
+        'accelerometer', 'magnetometer', 'barometer'],
+    goodReq = ['2.00', '2.01', '2.02', '2.03', '2.04', '2.05'];
 
 var coapNc = function () {
     cserver = cShepherd;
@@ -35,8 +36,10 @@ function shepherdEvtHdlr (msg) {
         dev,
         oid,
         auxId,
+        path,
         gad = {},
-        pathArray;
+        pathArray,
+        attrs = {};
 
     switch(msg.type) {
         case 'registered':
@@ -56,7 +59,6 @@ function shepherdEvtHdlr (msg) {
             break;
 
         case 'deregistered':
-
             break;
 
         case 'online':
@@ -70,18 +72,25 @@ function shepherdEvtHdlr (msg) {
             break;
 
         case 'update':
-            dev = cserver.find(data.device);
-            delete data.device;
-
-            nc.commitDevReporting(dev.mac, data);
             break;
 
         case 'notify':
             dev = cserver.find(data.device);
-            pathArray = pathSlashParser(path);
-            auxId = pathArray[0] + '/' + pathArray[1];
+            pathArray = pathSlashParser(data.path);
+            auxId = pathArray[0] + '/' + pathArray[1],
+            path = auxId + '/' + pathArray[2];
+            
+            if (pathArray.length === 2) {
+                attrs = data.value;
+            } else if (pathArray.length === 3) {
+                attrs[pathArray[2]] = data.value;
+            }
 
-            nc.commitGadReporting(dev.mac, auxId);
+            if (auxId === 'device/0') {
+                nc.commitDevReporting(dev.mac, attrs);
+            } else {
+                nc.commitGadReporting(dev.mac, auxId, attrs);
+            }
             break;
 
         default:
@@ -123,7 +132,7 @@ function cookRawDev (dev, rawDev, callback) {
 function cookRawGad (gad, rawGad, callback) { 
     var cls;
 
-    if (ipsoDefs.include(rawGad.oid) >= 0) {
+    if (ipsoDefs.indexOf(rawGad.oid) >= 0) {
         cls = rawGad.oid;
     } else {
         cls = 'generic';
@@ -163,7 +172,6 @@ netDrvs.permitJoin = function (duration, callback) {
     }
 };
 
-// remove or deregister?
 netDrvs.remove = function (permAddr, callback) {
     var dev = cserver._findByMac(permAddr),
         clientName = dev.clientName;
@@ -174,7 +182,9 @@ netDrvs.remove = function (permAddr, callback) {
 netDrvs.ping = function (permAddr, callback) {
     var dev = cserver._findByMac(permAddr);
 
-    dev.ping(callback);
+    dev.ping(function (err, rsp) {
+        callback(err, rsp.data);
+    });
 };
 
 // Optional
@@ -356,7 +366,7 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
         args = [];
     }
 
-    dev.exec(path, args, function(err, rsp) {
+    dev.execute(path, args, function(err, rsp) {
         callback(err);
     });
 };
@@ -370,30 +380,39 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
 
     delete cfg.enable;
 
-    if (enable === true) {
+    
+    if (!_.isEmpty(cfg) && enable === true) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
             if (err) {
                 callback(err);
             } else {
                 dev.observe(path, function (err, rsp) {
-                    callback(err);
+                    callback(err, reqStatusChk(rsp.status));
                 });
             }
         });
         
-    } else if (enable === false) {
+    } else if (!_.isEmpty(cfg) && enable === false) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
             if (err) {
                 callback(err);
             } else {
                 dev.cancelObserve(path, function (err, rsp) {
-                    callback(err);
+                    callback(err, reqStatusChk(rsp.status));
                 });
             }
         });
-    } else {
+    } else if (!_.isEmpty(cfg)) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
-            callback(err);
+            callback(err, reqStatusChk(rsp.status));
+        });
+    } else if (_.isEmpty(cfg) && enable === true) {
+        dev.observe(path, function (err, rsp) {
+            callback(err, reqStatusChk(rsp.status));
+        });
+    } else if (_.isEmpty(cfg) && enable === false) {
+        dev.cancelObserve(path, function (err, rsp) {
+            callback(err, reqStatusChk(rsp.status));
         });
     }
 };
@@ -423,4 +442,12 @@ function pathSlashParser (path) {       // '/x/y/z'
     return pathArray;  // ['x', 'y', 'z']
 }
 
-module.exports = coapNc;
+function reqStatusChk (status) {
+    if (goodReq.indexOf(status) >= 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+module.exports = coapNc();
