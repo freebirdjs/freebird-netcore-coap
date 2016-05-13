@@ -11,7 +11,7 @@ var nc,
     ipsoDefs = ['dIn', 'dOut', 'aIn', 'aOut', 'generic', 'illuminance', 'presence', 'temperature',
         'humidity', 'pwrMea', 'actuation', 'setPoint', 'loadCtrl', 'lightCtrl', 'pwrCtrl', 
         'accelerometer', 'magnetometer', 'barometer'],
-    goodReq = ['2.00', '2.01', '2.02', '2.03', '2.04', '2.05'];
+    goodRsp = ['2.00', '2.01', '2.02', '2.03', '2.04', '2.05'];
 
 var coapNc = function () {
     cserver = cShepherd;
@@ -246,6 +246,8 @@ devDrvs.read = function (permAddr, attr, callback) {
 
     if (attr === 'version' && attrPath) {
         dev.read(attrPath, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
+
             if (err) {
                 callback(err);
             } else {
@@ -257,6 +259,8 @@ devDrvs.read = function (permAddr, attr, callback) {
         });
     } else if (attr === 'power' && attrPath) {
         dev.read(attrPath, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
+
             if (err) {
                 callback(err);
             } else {
@@ -267,7 +271,12 @@ devDrvs.read = function (permAddr, attr, callback) {
         });
     } else if (attrPath) {
         dev.read(attrPath, function (err, rsp) {
-            callback(err, rsp.data);
+            err = err || rspStatusChk(rsp.status);
+
+            if (err)
+                callback(err);
+            else 
+                callback(null, rsp.data);
         });
     } else {
         callback(new Error('attr: ' + attr + ' not exist.'));
@@ -315,6 +324,8 @@ devDrvs.write = function (permAddr, attr, val, callback) {
         
     if (attrPath) {
         dev.write(attrPath, val, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
+
             if (_.isFunction(callback)) {
                 if (err)
                     callback(err);
@@ -340,7 +351,12 @@ gadDrvs.read = function (permAddr, auxId, attr, callback) {
         path = auxId + '/' + attr;
 
     dev.read(path, function(err, rsp) {
-        callback(err, rsp.data);
+        err = err || rspStatusChk(rsp.status);
+
+        if (err) 
+            callback(err);
+        else 
+            callback(null, rsp.data);
     });
 };
 
@@ -349,6 +365,8 @@ gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
         path = auxId + '/' + attr;
 
     dev.write(path, val, function(err, rsp) {
+        err = err || rspStatusChk(rsp.status);
+
         if (err)
             callback(err);
         else 
@@ -367,7 +385,12 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
     }
 
     dev.execute(path, args, function(err, rsp) {
-        callback(err);
+        err = err || rspStatusChk(rsp.status);
+
+        if (err)
+            callback(err);
+        else 
+            callback(null);
     });
 };
 
@@ -379,40 +402,60 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
         chkErr = null;
 
     delete cfg.enable;
-
     
+    function invokeCb(err, cb) {
+        if (err)
+            cb(err, false);
+        else 
+            cb(null, true);
+    }
+
     if (!_.isEmpty(cfg) && enable === true) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
+
             if (err) {
-                callback(err);
+                callback(err, false);
             } else {
                 dev.observe(path, function (err, rsp) {
-                    callback(err, reqStatusChk(rsp.status));
+                    err = err || rspStatusChk(rsp.status);
+
+                    invokeCb(err, callback);
                 });
             }
         });
         
     } else if (!_.isEmpty(cfg) && enable === false) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
+
             if (err) {
-                callback(err);
+                callback(err, false);
             } else {
                 dev.cancelObserve(path, function (err, rsp) {
-                    callback(err, reqStatusChk(rsp.status));
+                    err = err || rspStatusChk(rsp.status);
+
+                    invokeCb(err, callback);
                 });
             }
         });
     } else if (!_.isEmpty(cfg)) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
-            callback(err, reqStatusChk(rsp.status));
+            err = err || rspStatusChk(rsp.status);
+
+            invokeCb(err, callback);
         });
     } else if (_.isEmpty(cfg) && enable === true) {
         dev.observe(path, function (err, rsp) {
-            callback(err, reqStatusChk(rsp.status));
+            err = err || rspStatusChk(rsp.status);
+
+            invokeCb(err, callback);
         });
     } else if (_.isEmpty(cfg) && enable === false) {
         dev.cancelObserve(path, function (err, rsp) {
-            callback(err, reqStatusChk(rsp.status));
+            err = err || rspStatusChk(rsp.status);
+
+            invokeCb(err, callback);
         });
     }
 };
@@ -423,7 +466,12 @@ gadDrvs.getReportCfg = function (permAddr, auxId, attr, callback) {
         path = auxId + '/' + attr;
 
     dev.discover(path, function (err, rsp) {
-        callback(err, rsp.data.attrs);
+        err = err || rspStatusChk(rsp.status);
+
+        if (err)
+            callback(err);
+        else 
+            callback(null, rsp.data.attrs);
     });
 };
 
@@ -442,11 +490,21 @@ function pathSlashParser (path) {       // '/x/y/z'
     return pathArray;  // ['x', 'y', 'z']
 }
 
-function reqStatusChk (status) {
-    if (goodReq.indexOf(status) >= 0) {
-        return true;
+function rspStatusChk (status) {
+    if (goodRsp.indexOf(status) >= 0) {
+        return null;
     } else {
-        return false;
+        if (status === '4.00') {
+            return new Error('status: 4.00, Bad Request.');
+        } else if (status === '4.04') {
+            return new Error('status: 4.04, Not Found.');
+        } else if (status === '4.05') {
+            return new Error('status: 4.05, Not Allowed.');
+        } else if (status === '4.08') {
+            return new Error('status: 4.08, Timeout.');
+        } else {
+            return new Error('Unknown response status.');
+        }
     }
 }
 

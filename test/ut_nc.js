@@ -234,6 +234,12 @@ describe('Device Drivers Check', function () {
         });
     });
 
+    it('read() - attr not exist', function (done) {
+        nc.devRead(permAddr, 'foo', function (err, result) {
+            if (err) done();
+        });
+    });
+
     it('write()', function (done) {
         nc.devWrite(permAddr, 'serial', 'c-0001', function (err, result) {
             if (err) {
@@ -241,6 +247,18 @@ describe('Device Drivers Check', function () {
             } else {
                 done();
             }
+        });
+    });
+
+    it('write() - bad request', function (done) {
+        nc.devWrite(permAddr, 'serial', 1000, function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('write() - attr not exist', function (done) {
+        nc.devWrite(permAddr, 'foo', 'c-0001', function (err, result) {
+            if (err) done();
         });
     });
 
@@ -264,6 +282,18 @@ describe('Gadget Drivers Check', function () {
         });
     });
 
+    it('read() - not found', function (done) {
+        nc.gadRead(permAddr, 'temperature/0', 'foo', function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('read() - not allowed', function (done) {
+        nc.gadRead(permAddr, 'temperature/0', '5703', function (err, result) {
+            if (err) done();
+        });
+    });
+
     it('write()', function (done) {
         nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 25, function (err, result) {
             if (err) {
@@ -280,6 +310,24 @@ describe('Gadget Drivers Check', function () {
         });
     });
 
+    it('write() - bad request', function (done) {
+        nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 'bad', function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('write() - not found', function (done) {
+        nc.gadWrite(permAddr, 'temperature/0', 'foo', 25, function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('write() - not allowed', function (done) {
+        nc.gadWrite(permAddr, 'temperature/0', '5702', 25, function (err, result) {
+            if (err) done();
+        });
+    });
+
     it('exec()', function (done) {
         nc.gadExec(permAddr, 'temperature/0', '5704', ['Peter', 'KSHMR'], function (err, result) {
             if (err) {
@@ -287,6 +335,18 @@ describe('Gadget Drivers Check', function () {
             } else {
                 done();
             }
+        });
+    });
+
+    it('exec() - not found', function (done) {
+        nc.gadExec(permAddr, 'temperature/0', 'foo', [], function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('exec() - not allowed', function (done) {
+        nc.gadExec(permAddr, 'temperature/0', 'sensorValue', [], function (err, result) {
+            if (err) done();
         });
     });
 
@@ -326,8 +386,7 @@ describe('Gadget Drivers Check', function () {
             if (result === true) {
                 nc._controller.on('ind', devReportHdlr);
                 nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 40, function (err, result) {
-                    if (err)
-                        console.log(err);
+                    if (err) console.log(err);
                 });
             }  
         });
@@ -344,6 +403,27 @@ describe('Gadget Drivers Check', function () {
         });
     });
 
+    it('setReportCfg() - attr not allowed', function (done) {
+        cfg = {
+            foo: false
+        };
+
+        nc.setReportCfg(permAddr, 'temperature/0', 'sensorValue', cfg, function (err, result) {
+            if (err) done();
+        });
+    });
+
+    it('setReportCfg() - not found', function (done) {
+        cfg = {
+            pmin: 0,
+            pmax: 60
+        };
+
+        nc.setReportCfg(permAddr, 'temperature/0', 'foo', cfg, function (err, result) {
+            if (err) done();
+        });
+    });
+
     it('getReportCfg()', function (done) {
         cfg = {
             pmin: 0,
@@ -352,6 +432,12 @@ describe('Gadget Drivers Check', function () {
 
         nc.getReportCfg(permAddr, 'temperature/1', 'sensorValue', function (err, result) {
             if (_.isEqual(result, cfg)) done();
+        });
+    });
+
+    it('getReportCfg() - not found', function (done) {
+        nc.getReportCfg(permAddr, 'temperature/1', 'foo', function (err, result) {
+            if (err) done();
         });
     });
 });
