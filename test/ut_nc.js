@@ -135,7 +135,7 @@ describe('Netcore Drivers Check', function () {
         });
     });
 
-    it('start() again', function (done) {
+    it('start() - again', function (done) {
         nc.start(function (err) {
             if (err)
                 console.log(err);

@@ -15,6 +15,7 @@ var nc,
 
 var coapNc = function () {
     cserver = cShepherd;
+    cserver.on('ready', shepherdReadyHdlr);
     cserver.on('ind', shepherdEvtHdlr);
 
     nc = new Netcore('coapcore', cserver, {phy: 'coap', nwk: 'coap'});
@@ -31,6 +32,10 @@ var coapNc = function () {
 /*************************************************************************************************/
 /*** Shepherd Event Handlers                                                                   ***/
 /*************************************************************************************************/
+function shepherdReadyHdlr () {
+    nc.commitReady();
+}
+
 function shepherdEvtHdlr (msg) {
     var data = msg.data,
         dev,
