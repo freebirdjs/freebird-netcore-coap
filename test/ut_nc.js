@@ -1,6 +1,6 @@
 var should = require('should'),
     _ = require('lodash'),
-    nc = require('../netcore'),
+    nc = require('../index'),
     Netcore = require('freebird-base').Netcore,
     Device = require('freebird-base').Device,
     Gadget = require('freebird-base').Gadget;
