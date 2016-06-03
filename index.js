@@ -48,6 +48,8 @@ function shepherdEvtHdlr (msg) {
 
     switch(msg.type) {
         case 'registered':
+            nc.commitDevIncoming(data.mac, data);
+
             _.forEach(data.so, function (iObj, okey) {
                 oid = okey;
                 _.forEach(iObj, function (resrcs, ikey) {
@@ -68,7 +70,8 @@ function shepherdEvtHdlr (msg) {
 
         case 'online':
             dev = cserver.find(data);
-            nc.commitDevIncoming(dev.mac, dev);
+            if (dev._registered === true)
+                nc.commitDevIncoming(dev.mac, dev);
             break;
 
         case 'offline':
@@ -82,7 +85,7 @@ function shepherdEvtHdlr (msg) {
         case 'notify':
             dev = cserver.find(data.device);
             pathArray = pathSlashParser(data.path);
-            auxId = pathArray[0] + '/' + pathArray[1],
+            auxId = pathArray[0] + '/' + pathArray[1];
             path = auxId + '/' + pathArray[2];
             
             if (pathArray.length === 2) {
@@ -179,17 +182,26 @@ netDrvs.permitJoin = function (duration, callback) {
 
 netDrvs.remove = function (permAddr, callback) {
     var dev = cserver._findByMac(permAddr),
-        clientName = dev.clientName;
+        clientName;
 
-    cserver.remove(clientName, callback);
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));
+    } else {
+        clientName = dev.clientName;
+        cserver.remove(clientName, callback);
+    }
 };
 
 netDrvs.ping = function (permAddr, callback) {
     var dev = cserver._findByMac(permAddr);
 
-    dev.ping(function (err, rsp) {
-        callback(err, rsp.data);
-    });
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));
+    } else {        
+        dev.ping(function (err, rsp) {
+            callback(err, rsp.data);
+        });
+    }
 };
 
 // Optional
@@ -212,44 +224,11 @@ netDrvs.unban = function (permAddr, callback) {
 devDrvs.read = function (permAddr, attr, callback) {
     var dev = cserver._findByMac(permAddr),
         result = {},
-        attrPath;
+        attrPath = getDevAttrPath(attr);
 
-    switch (attr) {
-        case 'manufacturer':
-            attrPath = 'device/0/manuf';
-            break;
-        case 'model':
-            attrPath = 'device/0/model';
-            break;
-        case 'serial':
-            attrPath = 'device/0/serial';
-            break;
-        case 'fw':
-            attrPath = 'device/0/firmware';
-            break;
-        case 'hw':
-            attrPath = 'device/0/hwVer';
-            break;
-        case 'sw':
-            attrPath = 'device/0/swVer';
-            break;
-        case 'version':
-            attrPath = 'device/0';
-            break;
-        case 'type':
-            attrPath = 'device/0/availPwrSrc';
-            break;
-        case 'voltage':
-            attrPath = 'device/0/pwrSrcVoltage';
-            break;
-        case 'power':
-            attrPath = 'device/0';
-            break;
-        default:
-            break;
-    }
-
-    if (attr === 'version' && attrPath) {
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));  
+    } else if (attr === 'version' && attrPath) {
         dev.read(attrPath, function (err, rsp) {
             err = err || rspStatusChk(rsp.status);
 
@@ -290,44 +269,11 @@ devDrvs.read = function (permAddr, attr, callback) {
 
 devDrvs.write = function (permAddr, attr, val, callback) {
     var dev = cserver._findByMac(permAddr),
-        attrPath;
+        attrPath = getDevAttrPath(attr);
 
-    switch (attr) {
-        case 'manufacturer':
-            attrPath = 'device/0/manuf';
-            break;
-        case 'model':
-            attrPath = 'device/0/model';
-            break;
-        case 'serial':
-            attrPath = 'device/0/serial';
-            break;
-        case 'fw':
-            attrPath = 'device/0/firmware';
-            break;
-        case 'hw':
-            attrPath = 'device/0/hwVer';
-            break;
-        case 'sw':
-            attrPath = 'device/0/swVer';
-            break;
-        case 'version':
-            attrPath = 'device/0';
-            break;
-        case 'type':
-            attrPath = 'device/0/availPwrSrc';
-            break;
-        case 'voltage':
-            attrPath = 'device/0/pwrSrcVoltage';
-            break;
-        case 'power':
-            attrPath = 'device/0';
-            break;
-        default:
-            break;
-    }
-        
-    if (attrPath) {
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));  
+    } else if (attrPath) {
         dev.write(attrPath, val, function (err, rsp) {
             err = err || rspStatusChk(rsp.status);
 
@@ -355,28 +301,36 @@ gadDrvs.read = function (permAddr, auxId, attr, callback) {
     var dev = cserver._findByMac(permAddr),
         path = auxId + '/' + attr;
 
-    dev.read(path, function(err, rsp) {
-        err = err || rspStatusChk(rsp.status);
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr)); 
+    } else {  
+        dev.read(path, function(err, rsp) {
+            err = err || rspStatusChk(rsp.status);
 
-        if (err) 
-            callback(err);
-        else 
-            callback(null, rsp.data);
-    });
+            if (err) 
+                callback(err);
+            else 
+                callback(null, rsp.data);
+        });
+    }
 };
 
 gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
     var dev = cserver._findByMac(permAddr),
         path = auxId + '/' + attr;
 
-    dev.write(path, val, function(err, rsp) {
-        err = err || rspStatusChk(rsp.status);
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));
+    } else { 
+        dev.write(path, val, function(err, rsp) {
+            err = err || rspStatusChk(rsp.status);
 
-        if (err)
-            callback(err);
-        else 
-            callback(null, val);
-    });
+            if (err)
+                callback(err);
+            else 
+                callback(null, val);
+        });
+    }
 };
 
 // Optional
@@ -389,14 +343,18 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
         args = [];
     }
 
-    dev.execute(path, args, function(err, rsp) {
-        err = err || rspStatusChk(rsp.status);
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));  
+    } else {
+        dev.execute(path, args, function(err, rsp) {
+            err = err || rspStatusChk(rsp.status);
 
-        if (err)
-            callback(err);
-        else 
-            callback(null);
-    });
+            if (err)
+                callback(err);
+            else 
+                callback(null);
+        });
+    }
 };
 
 // Optional
@@ -414,8 +372,9 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
         else 
             cb(null, true);
     }
-
-    if (!_.isEmpty(cfg) && enable === true) {
+    if (!dev) {
+        invokeCb(new Error('No such item of permAddr: ' + permAddr), callback);  
+    } else if (!_.isEmpty(cfg) && enable === true) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
             err = err || rspStatusChk(rsp.status);
 
@@ -429,7 +388,6 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
                 });
             }
         });
-        
     } else if (!_.isEmpty(cfg) && enable === false) {
         dev.writeAttrs(path, cfg, function (err, rsp) {
             err = err || rspStatusChk(rsp.status);
@@ -470,14 +428,18 @@ gadDrvs.getReportCfg = function (permAddr, auxId, attr, callback) {
     var dev = cserver._findByMac(permAddr),
         path = auxId + '/' + attr;
 
-    dev.discover(path, function (err, rsp) {
-        err = err || rspStatusChk(rsp.status);
+    if (!dev) {
+        callback(new Error('No such item of permAddr: ' + permAddr));  
+    } else {
+        dev.discover(path, function (err, rsp) {
+            err = err || rspStatusChk(rsp.status);
 
-        if (err)
-            callback(err);
-        else 
-            callback(null, rsp.data.attrs);
-    });
+            if (err)
+                callback(err);
+            else 
+                callback(null, rsp.data.attrs);
+        });
+    }
 };
 
 /*************************************************************************************************/
@@ -511,6 +473,53 @@ function rspStatusChk (status) {
             return new Error('Unknown response status.');
         }
     }
+}
+
+function getDevAttrPath(attr) {
+    var attrPath;
+
+    switch (attr) {
+        case 'manufacturer':
+            attrPath = 'device/0/manuf';
+            break;
+        case 'model':
+            attrPath = 'device/0/model';
+            break;
+        case 'serial':
+            attrPath = 'device/0/serial';
+            break;
+        case 'fw':
+        case 'version.fw':
+            attrPath = 'device/0/firmware';
+            break;
+        case 'hw':
+        case 'version.hw':
+            attrPath = 'device/0/hwVer';
+            break;
+        case 'sw':
+        case 'version.sw':
+            attrPath = 'device/0/swVer';
+            break;
+        case 'version':
+            attrPath = 'device/0';
+            break;
+        case 'type':
+        case 'power.type':
+            attrPath = 'device/0/availPwrSrc';
+            break;
+        case 'voltage':
+        case 'power.voltage':
+            attrPath = 'device/0/pwrSrcVoltage';
+            break;
+        case 'power':
+            attrPath = 'device/0';
+            break;
+        default:
+            attrPath = undefined;
+            break;
+    }
+
+    return attrPath;
 }
 
 module.exports = coapNc();
