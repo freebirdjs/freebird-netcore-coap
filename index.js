@@ -8,9 +8,13 @@ var nc,
     netDrvs = {},
     devDrvs = {},
     gadDrvs = {},
-    ipsoDefs = ['dIn', 'dOut', 'aIn', 'aOut', 'generic', 'illuminance', 'presence', 'temperature',
-        'humidity', 'pwrMea', 'actuation', 'setPoint', 'loadCtrl', 'lightCtrl', 'pwrCtrl', 
-        'accelerometer', 'magnetometer', 'barometer'],
+    ipsoDefs = ['dIn', 'dOut', 'aIn', 'aOut', 'generic', 'illuminance', 'presence', 'temperature', 
+        'humidity', 'pwrMea', 'actuation', 'setPoint', 'loadCtrl', 'lightCtrl', 'pwrCtrl', 'accelerometer', 
+        'magnetometer', 'barometer', 'voltage', 'current', 'frequency', 'depth', 'percentage', 'altitude', 
+        'load', 'pressure', 'loudness', 'concentration', 'acidity', 'conductivity', 'power', 'powerFactor', 
+        'distance', 'energy', 'direction', 'time', 'gyrometer', 'color', 'gpsLocation', 'positioner', 'buzzer', 
+        'audioClip', 'timer', 'addressableTextDisplay', 'onOffSwitch', 'levelControl', 'upDownControl', 
+        'multipleAxisJoystick', 'rate', 'pushButton', 'multistateSelector', 'multistateSelector'],
     goodRsp = ['2.00', '2.01', '2.02', '2.03', '2.04', '2.05'];
 
 var coapNc = function () {
@@ -47,21 +51,29 @@ function shepherdEvtHdlr (msg) {
         attrs = {};
 
     switch(msg.type) {
-        case 'registered':
+        case 'registered': 
+            dev = data; 
+// [HACK] 
+            setTimeout(function () {
+                dev.observe('device/0');
+            }, 200);
+
             nc.commitDevIncoming(data.mac, data);
 
             _.forEach(data.so, function (iObj, okey) {
-                oid = okey;
-                _.forEach(iObj, function (resrcs, ikey) {
-                    auxId = oid + '/' + ikey;
-                    gad = {
-                        oid: oid,
-                        iid: ikey,
-                        resrcs: resrcs
-                    };
+                if (ipsoDefs.indexOf(okey) >= 0) {
+                    oid = okey;
+                    _.forEach(iObj, function (resrcs, ikey) {
+                        auxId = oid + '/' + ikey;
+                        gad = {
+                            oid: oid,
+                            iid: ikey,
+                            resrcs: resrcs
+                        };
 
-                    nc.commitGadIncoming(data.mac, auxId, gad);
-                });
+                        nc.commitGadIncoming(data.mac, auxId, gad);
+                    });
+                }
             });
             break;
 
@@ -70,7 +82,7 @@ function shepherdEvtHdlr (msg) {
 
         case 'online':
             dev = cserver.find(data);
-            if (dev._registered === true)
+            if (dev._registered === true) 
                 nc.commitDevIncoming(dev.mac, dev);
             break;
 
@@ -95,6 +107,7 @@ function shepherdEvtHdlr (msg) {
             }
 
             if (auxId === 'device/0') {
+                attrs = getDevAttr(attrs);
                 nc.commitDevReporting(dev.mac, attrs);
             } else {
                 nc.commitGadReporting(dev.mac, auxId, attrs);
@@ -372,6 +385,7 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
         else 
             cb(null, true);
     }
+
     if (!dev) {
         invokeCb(new Error('No such item of permAddr: ' + permAddr), callback);  
     } else if (!_.isEmpty(cfg) && enable === true) {
@@ -473,6 +487,35 @@ function rspStatusChk (status) {
             return new Error('Unknown response status.');
         }
     }
+}
+
+function getDevAttr(attrs) {
+    var devAttr = {};
+
+    devAttr.version = {};
+    devAttr.power = {};
+
+    _.forEach(attrs, function (val, key) {
+        if (key === 'manuf') {
+            devAttr.manufacturer = val;
+        } else if (key === 'model') {
+            devAttr.model = val;
+        } else if (key === 'serial') {
+            devAttr.serial = val;
+        } else if (key === 'firmware') {
+            devAttr.version.fw = val;
+        } else if (key === 'hwVer') {
+            devAttr.version.hw = val;
+        } else if (key === 'swVer') {
+            devAttr.version.sw = val;
+        } else if (key === 'availPwrSrc') {
+            devAttr.power.type = val;
+        } else if (key === 'pwrSrcVoltage') {
+            devAttr.power.voltage = val;
+        }
+    });
+
+    return devAttr;
 }
 
 function getDevAttrPath(attr) {
