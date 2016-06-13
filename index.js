@@ -161,7 +161,7 @@ function cookRawGad (gad, rawGad, callback) {
 
     gad.setPanelInfo({
         profile: null,
-        class: cls
+        classId: cls
     });
 
     gad.setAttrs(rawGad.resrcs);
