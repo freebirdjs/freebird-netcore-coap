@@ -1,16 +1,24 @@
 var should = require('should'),
     _ = require('lodash'),
-    nc = require('../index'),
     Netcore = require('freebird-base').Netcore,
     Device = require('freebird-base').Device,
-    Gadget = require('freebird-base').Gadget;
+    Gadget = require('freebird-base').Gadget,
+    CoapNode = require('coap-node');
 
+var nc = require('../index');
+
+var coapNode = new CoapNode('nodeTest'),
+    permAddr;
+
+/**********************************************************************/
+/* mock object                                                        */
+/**********************************************************************/
 var rawDev = {
-        "clientName":"nodeTest",
+        "clientName":"testDev",
         "lifetime":86400,
         "version":"1.0.0",
         "ip":"127.0.0.1",
-        "mac":"00:0c:29:3c:fc:7d",
+        "mac":"AA:BB:CC:DD:EE:FF",
         "port":34490,
         "joinTime":1462345440414,
         "objList":{
@@ -67,12 +75,46 @@ var rawDev = {
 var dev = new Device(nc, rawDev),
     gad = new Gadget(dev, 'temperature/1', rawGad);
 
+/**********************************************************************/
+/* coapNode init resource                                             */
+/**********************************************************************/
+coapNode.initResrc(3303, 0, {
+    sensorValue: 21,
+    units: 'C',
+    5702: { 
+        read: function (cb) {
+            var time = new Date();
+            cb(null, time.toString());
+        }
+    },
+    5703: { 
+        write: function (val, cb) {
+            console.log('write ' + val);
+            cb(null, val);
+        }
+    },
+    5704: { 
+        exec: function (val1, val2, cb) {
+            console.log(val1 + ': Hello ' + val2 + '!');
+            cb(null);
+        }
+    }
+});
+
+coapNode.initResrc(3303, 1, {
+    5700: 70,
+    5701: 'F'
+});
+
+/**********************************************************************/
+/* test                                                               */
+/**********************************************************************/
 describe('Cook Functional Check', function() {
     it('cookRawDev()', function (done) {
         nc.cookRawDev(dev, rawDev, function (err, cooked) {
             var netInfo = {
                     address: {
-                        permanent: '00:0c:29:3c:fc:7d', 
+                        permanent: 'AA:BB:CC:DD:EE:FF', 
                         dynamic: '127.0.0.1'
                     }
                 },
@@ -97,7 +139,7 @@ describe('Cook Functional Check', function() {
     it('cookRawGad()', function (done) {
         nc.cookRawGad(gad, rawGad, function (err, cooked) {
             var panelInfo = {
-                    class: 'temperature'
+                    classId: 'temperature'
                 },
                 attrInfo = {
                     sensorValue: 70,
@@ -185,6 +227,11 @@ describe('Netcore Drivers Check', function () {
             };
 
         nc._controller.on('ind', devRemoveHdlr);
+
+        coapNode.register('127.0.0.1', 5683, function (err, rsp) {
+            if(err) console.log(err);
+            else permAddr = coapNode.mac;
+        });
     });
 
     it('ping()',function (done) {
@@ -200,7 +247,7 @@ describe('Netcore Drivers Check', function () {
                                     done(); 
                                 }
                             });
-                        }, 1000);
+                        }, 500);
                         break;
                     default:
                         break;
@@ -208,6 +255,10 @@ describe('Netcore Drivers Check', function () {
             };
 
         nc._controller.on('ind', devPingHdlr);
+
+        coapNode.register('127.0.0.1', 5683, function (err, rsp) {
+            if(err) console.log(err);
+        });
     });
 
     it('ban()', function (done) {
@@ -222,9 +273,8 @@ describe('Netcore Drivers Check', function () {
 });
 
 describe('Device Drivers Check', function () {
-    var permAddr = '00:0c:29:3c:fc:7d';
-
     this.timeout(10000);
+
     it('read()', function (done) {
         nc.devRead(permAddr, 'manufacturer', function (err, result) {
             if (err) {
@@ -269,9 +319,8 @@ describe('Device Drivers Check', function () {
 });
 
 describe('Gadget Drivers Check', function () {
-    var permAddr = '00:0c:29:3c:fc:7d';
-
     this.timeout(10000);
+
     it('read()', function (done) {
         nc.gadRead(permAddr, 'temperature/0', 'sensorValue', function (err, result) {
             if (err) {
