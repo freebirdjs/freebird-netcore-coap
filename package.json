@@ -1,6 +1,6 @@
 {
   "name": "freebird-netcore-coap",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "main": "netcode.js",
   "directories": {
