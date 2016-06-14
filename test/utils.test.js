@@ -227,10 +227,11 @@ describe('Netcore Drivers Check', function () {
             };
 
         nc._controller.on('ind', devRemoveHdlr);
-
-        coapNode.register('127.0.0.1', 5683, function (err, rsp) {
-            if(err) console.log(err);
-            else permAddr = coapNode.mac;
+        coapNode.start(function () {
+            coapNode.register('127.0.0.1', 5683, function (err, rsp) {
+                if(err) console.log(err);
+                else permAddr = coapNode.mac;
+            });
         });
     });
 
