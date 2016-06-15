@@ -181,6 +181,11 @@ netDrvs.stop = function (callback) {
 };
 
 netDrvs.reset = function (mode, callback) {
+    if (_.isFunction(mode)) {
+        callback = mode;
+        mode = null;
+    }
+
     cserver.reset(callback);
 };
 
@@ -357,15 +362,15 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
     }
 
     if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));  
+        callback(new Error('No such item of permAddr: ' + permAddr), false);  
     } else {
         dev.execute(path, args, function(err, rsp) {
             err = err || rspStatusChk(rsp.status);
 
             if (err)
-                callback(err);
+                callback(err, false);
             else 
-                callback(null);
+                callback(null, true);
         });
     }
 };
