@@ -1,18 +1,18 @@
 {
   "name": "freebird-netcore-coap",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "main": "netcode.js",
   "directories": {
     "test": "test"
   },
   "dependencies": {
-    "coap-shepherd": "^0.0.11",
+    "coap-shepherd": "^0.0.13",
     "freebird-base": "^0.2.0",
     "lodash": "^4.12.0"
   },
   "devDependencies": {
-    "coap-node": "0.0.8",
+    "coap-node": "0.0.9",
     "mocha": "^2.5.3",
     "should": "^8.3.1"
   },

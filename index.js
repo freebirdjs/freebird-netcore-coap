@@ -43,6 +43,7 @@ function shepherdReadyHdlr () {
 function shepherdEvtHdlr (msg) {
     var data = msg.data,
         dev,
+        permAddr,
         oid,
         auxId,
         path,
@@ -53,14 +54,13 @@ function shepherdEvtHdlr (msg) {
     switch(msg.type) {
         case 'registered': 
             dev = data; 
-// [HACK] 
-            setTimeout(function () {
-                dev.observe('device/0');
-            }, 200);
+            permAddr = buildPermAddr(dev.mac, dev.clientId);
 
-            nc.commitDevIncoming(data.mac, data);
+            dev.observe('device/0');
 
-            _.forEach(data.so, function (iObj, okey) {
+            nc.commitDevIncoming(permAddr, dev);
+
+            _.forEach(dev.so, function (iObj, okey) {
                 if (ipsoDefs.indexOf(okey) >= 0) {
                     oid = okey;
                     _.forEach(iObj, function (resrcs, ikey) {
@@ -71,7 +71,7 @@ function shepherdEvtHdlr (msg) {
                             resrcs: resrcs
                         };
 
-                        nc.commitGadIncoming(data.mac, auxId, gad);
+                        nc.commitGadIncoming(permAddr, auxId, gad);
                     });
                 }
             });
@@ -82,13 +82,16 @@ function shepherdEvtHdlr (msg) {
 
         case 'online':
             dev = cserver.find(data);
-            if (dev._registered === true) 
-                nc.commitDevIncoming(dev.mac, dev);
+            permAddr = buildPermAddr(dev.mac, dev.clientId);
+
+            nc.commitDevIncoming(permAddr, dev);
             break;
 
         case 'offline':
             dev = cserver.find(data);
-            nc.commitDevLeaving(dev.mac);
+            permAddr = buildPermAddr(dev.mac, dev.clientId);
+
+            nc.commitDevLeaving(permAddr);
             break;
 
         case 'update':
@@ -96,6 +99,7 @@ function shepherdEvtHdlr (msg) {
 
         case 'notify':
             dev = cserver.find(data.device);
+            permAddr = buildPermAddr(dev.mac, dev.clientId);
             pathArray = pathSlashParser(data.path);
             auxId = pathArray[0] + '/' + pathArray[1];
             path = auxId + '/' + pathArray[2];
@@ -108,9 +112,9 @@ function shepherdEvtHdlr (msg) {
 
             if (auxId === 'device/0') {
                 attrs = getDevAttr(attrs);
-                nc.commitDevReporting(dev.mac, attrs);
+                nc.commitDevReporting(permAddr, attrs);
             } else {
-                nc.commitGadReporting(dev.mac, auxId, attrs);
+                nc.commitGadReporting(permAddr, auxId, attrs);
             }
             break;
 
@@ -123,29 +127,29 @@ function shepherdEvtHdlr (msg) {
 /*** Transform Raw Data Object                                                                 ***/
 /*************************************************************************************************/
 function cookRawDev (dev, rawDev, callback) { 
-    var netInfo = {
-            role: null,
-            parent: '0',
-            maySleep: false,
-            address: { permanent: rawDev.mac, dynamic: rawDev.ip },
-        },
-        attrs = {
-            manufacturer: rawDev.so.device[0].manuf,
-            model: rawDev.so.device[0].model,
-            serial: rawDev.so.device[0].serial,
-            version: {
-                fw: rawDev.so.device[0].firmware,
-                hw: rawDev.so.device[0].hwVer,
-                sw: rawDev.so.device[0].swVer
-            },
-            power: {
-                type: rawDev.so.device[0].availPwrSrc,
-                voltage: rawDev.so.device[0].pwrSrcVoltage
-            }
-        };
+    var permAddr = buildPermAddr(rawDev.mac, rawDev.clientId);
 
-    dev.setNetInfo(netInfo);
-    dev.setAttrs(attrs);
+    dev.setNetInfo({
+        role: null,
+        parent: '0',
+        maySleep: false,
+        address: { permanent: permAddr, dynamic: rawDev.ip },
+    });
+
+    dev.setAttrs({
+        manufacturer: rawDev.so.device[0].manuf,
+        model: rawDev.so.device[0].model,
+        serial: rawDev.so.device[0].serial,
+        version: {
+            fw: rawDev.so.device[0].firmware,
+            hw: rawDev.so.device[0].hwVer,
+            sw: rawDev.so.device[0].swVer
+        },
+        power: {
+            type: rawDev.so.device[0].availPwrSrc,
+            voltage: rawDev.so.device[0].pwrSrcVoltage
+        }
+    });
 
     callback(null, dev);
 }
@@ -199,7 +203,7 @@ netDrvs.permitJoin = function (duration, callback) {
 };
 
 netDrvs.remove = function (permAddr, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         clientName;
 
     if (!dev) {
@@ -211,7 +215,7 @@ netDrvs.remove = function (permAddr, callback) {
 };
 
 netDrvs.ping = function (permAddr, callback) {
-    var dev = cserver._findByMac(permAddr);
+    var dev = findCnode(permAddr);
 
     if (!dev) {
         callback(new Error('No such item of permAddr: ' + permAddr));
@@ -224,14 +228,14 @@ netDrvs.ping = function (permAddr, callback) {
 
 // Optional
 netDrvs.ban = function (permAddr, callback) {
-    var dev = cserver._findByMac(permAddr);
+    var dev = findCnode(permAddr);
 
     
 };
 
 // Optional
 netDrvs.unban = function (permAddr, callback) {
-    var dev = cserver._findByMac(permAddr);
+    var dev = findCnode(permAddr);
 
     
 };
@@ -240,7 +244,7 @@ netDrvs.unban = function (permAddr, callback) {
 /*** Device drivers                                                                            ***/
 /*************************************************************************************************/
 devDrvs.read = function (permAddr, attr, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         result = {},
         attrPath = getDevAttrPath(attr);
 
@@ -286,7 +290,7 @@ devDrvs.read = function (permAddr, attr, callback) {
 };
 
 devDrvs.write = function (permAddr, attr, val, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         attrPath = getDevAttrPath(attr);
 
     if (!dev) {
@@ -316,7 +320,7 @@ devDrvs.identify = function (permAddr, callback) {
 /*** Gadget drivers                                                                            ***/
 /*************************************************************************************************/
 gadDrvs.read = function (permAddr, auxId, attr, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         path = auxId + '/' + attr;
 
     if (!dev) {
@@ -334,7 +338,7 @@ gadDrvs.read = function (permAddr, auxId, attr, callback) {
 };
 
 gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         path = auxId + '/' + attr;
 
     if (!dev) {
@@ -353,7 +357,7 @@ gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
 
 // Optional
 gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         path = auxId + '/' + attr;
 
     if (_.isFunction(args)) {
@@ -377,7 +381,7 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
 
 // Optional
 gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         path = auxId + '/' + attr,
         enable = cfg.enable,
         chkErr = null;
@@ -444,7 +448,7 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
 
 // Optional
 gadDrvs.getReportCfg = function (permAddr, auxId, attr, callback) {
-    var dev = cserver._findByMac(permAddr),
+    var dev = findCnode(permAddr),
         path = auxId + '/' + attr;
 
     if (!dev) {
@@ -521,6 +525,41 @@ function getDevAttr(attrs) {
     });
 
     return devAttr;
+}
+
+function buildPermAddr(macAddr, clientId) {
+    return macAddr + '/' + clientId;
+}
+
+function parsePermAddr (permAddr) {
+    var splitAddr = permAddr.split('/');
+
+    return {
+        mac: splitAddr[0],
+        clientId: splitAddr[1]
+    };
+}
+
+function findCnode(permAddr) {
+    var cnode,
+        cnodes,
+        parsedAddr = parsePermAddr(permAddr);
+        
+    if (parsedAddr.clientId)
+        cnode = cserver._findByClientId(parsedAddr.clientId);
+
+    if (cnode) {
+        return cnode;
+    } else {
+        cnodes = cserver._findByMacAddr(parsedAddr.mac);
+
+        if (cnodes.length === 0)
+            return null;
+        else if (cnodes.length !== 1)
+            return null;
+        else
+            return cnodes[0];
+    }
 }
 
 function getDevAttrPath(attr) {

@@ -7,14 +7,23 @@ var should = require('should'),
 
 var nc = require('../index');
 
-var coapNode = new CoapNode('nodeTest'),
-    permAddr;
+var coapNode1 = new CoapNode('nodeTest1'),
+    coapNode2 = new CoapNode('nodeTest2', {
+        manuf: 'freebird'
+    }),
+    coapNode3 = new CoapNode('nodeTest3', {
+        model: 'coap-7688'
+    }),
+    permAddr1, 
+    permAddr2, 
+    permAddr3;
 
 /**********************************************************************/
 /* mock object                                                        */
 /**********************************************************************/
 var rawDev = {
         "clientName":"testDev",
+        "clientId": 1,
         "lifetime":86400,
         "version":"1.0.0",
         "ip":"127.0.0.1",
@@ -76,9 +85,9 @@ var dev = new Device(nc, rawDev),
     gad = new Gadget(dev, 'temperature/1', rawGad);
 
 /**********************************************************************/
-/* coapNode init resource                                             */
+/* coapNode1 init resource                                            */
 /**********************************************************************/
-coapNode.initResrc(3303, 0, {
+coapNode1.initResrc('temperature', 0, {
     sensorValue: 21,
     units: 'C',
     5702: { 
@@ -101,9 +110,24 @@ coapNode.initResrc(3303, 0, {
     }
 });
 
-coapNode.initResrc(3303, 1, {
+coapNode1.initResrc('temperature', 1, {
     5700: 70,
     5701: 'F'
+});
+
+/**********************************************************************/
+/* coapNode2 init resource                                            */
+/**********************************************************************/
+coapNode2.initResrc('humidity', 0, {
+    sensorValue: 56,
+    units: '%'
+});
+
+/**********************************************************************/
+/* coapNode3 init resource                                            */
+/**********************************************************************/
+coapNode3.initResrc('generic', 0, {
+    sensorValue: 87
 });
 
 /**********************************************************************/
@@ -114,7 +138,7 @@ describe('Cook Functional Check', function() {
         nc.cookRawDev(dev, rawDev, function (err, cooked) {
             var netInfo = {
                     address: {
-                        permanent: 'AA:BB:CC:DD:EE:FF', 
+                        permanent: 'AA:BB:CC:DD:EE:FF/1', 
                         dynamic: '127.0.0.1'
                     }
                 },
@@ -205,19 +229,17 @@ describe('Netcore Drivers Check', function () {
     }); 
 
     this.timeout(10000);
-    it('remove()', function (done) {
+
+    it('Device1 register', function (done) {
         var clientName,
-            devRemoveHdlr = function (msg) {
+            devRegHdlr = function (msg) {
                 switch(msg.type) {
                     case 'registered':
                         clientName = msg.data.clientName;
-                        nc.remove(msg.data.mac, function (err) {
-                            if (err) console.log(err);
-                        });
-                        break;
-                    case 'deregistered':
-                        if (msg.data === clientName) {
-                            nc._controller.removeListener('ind', devRemoveHdlr);
+                        permAddr1 = msg.data.mac + '/' + msg.data.clientId;
+
+                        if (clientName === 'nodeTest1') {
+                            nc._controller.removeListener('ind', devRegHdlr);
                             done();
                         }
                         break;
@@ -226,40 +248,103 @@ describe('Netcore Drivers Check', function () {
                 }
             };
 
-        nc._controller.on('ind', devRemoveHdlr);
-        coapNode.start(function () {
-            coapNode.register('127.0.0.1', 5683, function (err, rsp) {
-                if(err) console.log(err);
-                else permAddr = coapNode.mac;
-            });
+        nc._controller.on('ind', devRegHdlr);
+
+        coapNode1.register('127.0.0.1', 5683, function (err, rsp) {
+            if(err) console.log(err);
         });
     });
 
-    it('ping()',function (done) {
-        var devPingHdlr = function (msg) {
+    it('remove()', function (done) {
+        nc.remove(permAddr1, function (err) {
+            if (err) console.log(err);
+            else done();
+        });
+    });
+
+    it('Device1 re-register', function (done) {
+        var clientName,
+            devReRegHdlr = function (msg) {
                 switch(msg.type) {
                     case 'registered':
-                        setTimeout(function () {
-                            nc.ping(msg.data.mac, function (err, result) {
-                                if (err) {
-                                    console.log(err);
-                                } else if (Number(result)) {
-                                    nc._controller.removeListener('ind', devPingHdlr);
-                                    done(); 
-                                }
-                            });
-                        }, 500);
+                        clientName = msg.data.clientName;
+                        permAddr1 = msg.data.mac + '/' + msg.data.clientId;
+
+                        if (clientName === 'nodeTest1') {
+                            nc._controller.removeListener('ind', devReRegHdlr);
+                            done();
+                        }
                         break;
                     default:
                         break;
                 }
             };
 
-        nc._controller.on('ind', devPingHdlr);
+        nc._controller.on('ind', devReRegHdlr);
 
-        coapNode.register('127.0.0.1', 5683, function (err, rsp) {
+        coapNode1.register('127.0.0.1', 5683, function (err, rsp) {
             if(err) console.log(err);
         });
+    });
+
+    it('ping()',function (done) {
+        nc.ping(permAddr1, function (err, result) {
+            if (err) {
+                console.log(err);
+            } else if (Number(result)) {
+                done(); 
+            }
+        });    
+    });
+
+    it('Device2 register',function (done) {
+        var clientName,
+            devSecRegHdlr = function (msg) {
+                switch(msg.type) {
+                    case 'registered':
+                        clientName = msg.data.clientName;
+                        permAddr2 = msg.data.mac + '/' + msg.data.clientId;
+
+                        if (clientName === 'nodeTest2') {
+                            nc._controller.removeListener('ind', devSecRegHdlr);
+                            done();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            };
+
+        nc._controller.on('ind', devSecRegHdlr);
+
+        coapNode2.register('127.0.0.1', 5683, function (err, rsp) {
+            if(err) console.log(err);
+        });     
+    });
+
+    it('Device3 register',function (done) {
+        var clientName,
+            devThiRegHdlr = function (msg) {
+                switch(msg.type) {
+                    case 'registered':
+                        clientName = msg.data.clientName;
+                        permAddr3 = msg.data.mac + '/' + msg.data.clientId;
+
+                        if (clientName === 'nodeTest3') {
+                            nc._controller.removeListener('ind', devThiRegHdlr);
+                            done();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            };
+
+        nc._controller.on('ind', devThiRegHdlr);
+
+        coapNode3.register('127.0.0.1', 5683, function (err, rsp) {
+            if(err) console.log(err);
+        });     
     });
 
     it('ban()', function (done) {
@@ -277,7 +362,7 @@ describe('Device Drivers Check', function () {
     this.timeout(10000);
 
     it('read()', function (done) {
-        nc.devRead(permAddr, 'manufacturer', function (err, result) {
+        nc.devRead(permAddr1, 'manufacturer', function (err, result) {
             if (err) {
                 console.log(err);
             } else if (result === 'sivann')
@@ -286,36 +371,84 @@ describe('Device Drivers Check', function () {
     });
 
     it('read() - attr not exist', function (done) {
-        nc.devRead(permAddr, 'foo', function (err, result) {
+        nc.devRead(permAddr1, 'foo', function (err, result) {
             if (err) done();
         });
     });
 
+    it('read() - device2', function (done) {
+        nc.devRead(permAddr2, 'manufacturer', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else if (result === 'freebird')
+                done();
+        });
+    });
+
+    it('read() - device3', function (done) {
+        nc.devRead(permAddr3, 'model', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else if (result === 'coap-7688')
+                done();
+        });
+    });
+
     it('write()', function (done) {
-        nc.devWrite(permAddr, 'serial', 'c-0001', function (err, result) {
+        nc.devWrite(permAddr1, 'serial', 'c-0001', function (err, result) {
             if (err) {
                 console.log(err);
             } else {
-                done();
+                nc.devRead(permAddr1, 'serial', function (err, result) {
+                    if (err) {
+                        console.log(err);
+                    } else if (result === 'c-0001')
+                        done();
+                });
             }
         });
     });
 
     it('write() - bad request', function (done) {
-        nc.devWrite(permAddr, 'serial', 1000, function (err, result) {
+        nc.devWrite(permAddr1, 'serial', 1000, function (err, result) {
             if (err) done();
         });
     });
 
     it('write() - attr not exist', function (done) {
-        nc.devWrite(permAddr, 'foo', 'c-0001', function (err, result) {
+        nc.devWrite(permAddr1, 'foo', 'c-0001', function (err, result) {
             if (err) done();
         });
     });
 
-    it('identify', function (done) {
-        //not implement
-        done();
+    it('write() - device2', function (done) {
+        nc.devWrite(permAddr2, 'serial', 'c-0002', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else {
+                nc.devRead(permAddr2, 'serial', function (err, result) {
+                    if (err) {
+                        console.log(err);
+                    } else if (result === 'c-0002')
+                        done();
+                });
+            }
+        });
+    });
+
+    it('write() - device3', function (done) {
+        nc.devWrite(permAddr3, 'serial', 'c-0003', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else {
+                nc.devRead(permAddr3, 'serial', function (err, result) {
+                    if (err) {
+                        console.log(err);
+                    } else if (result === 'c-0003')
+                        done();
+                });
+            }
+        });
     });
 });
 
@@ -323,7 +456,7 @@ describe('Gadget Drivers Check', function () {
     this.timeout(10000);
 
     it('read()', function (done) {
-        nc.gadRead(permAddr, 'temperature/0', 'sensorValue', function (err, result) {
+        nc.gadRead(permAddr1, 'temperature/0', 'sensorValue', function (err, result) {
             if (err) {
                 console.log(err);
             } else if (result === 21) {
@@ -333,23 +466,43 @@ describe('Gadget Drivers Check', function () {
     });
 
     it('read() - not found', function (done) {
-        nc.gadRead(permAddr, 'temperature/0', 'foo', function (err, result) {
+        nc.gadRead(permAddr1, 'temperature/0', 'foo', function (err, result) {
             if (err) done();
         });
     });
 
     it('read() - not allowed', function (done) {
-        nc.gadRead(permAddr, 'temperature/0', '5703', function (err, result) {
+        nc.gadRead(permAddr1, 'temperature/0', '5703', function (err, result) {
             if (err) done();
         });
     });
 
+    it('read() - device2', function (done) {
+        nc.gadRead(permAddr2, 'humidity/0', 'sensorValue', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else if (result === 56) {
+                done();
+            }
+        });
+    });
+
+    it('read() - device3', function (done) {
+        nc.gadRead(permAddr3, 'generic/0', 'sensorValue', function (err, result) {
+            if (err) {
+                console.log(err);
+            } else if (result === 87) {
+                done();
+            }
+        });
+    });
+
     it('write()', function (done) {
-        nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 25, function (err, result) {
+        nc.gadWrite(permAddr1, 'temperature/0', 'sensorValue', 25, function (err, result) {
             if (err) {
                 console.log(err);
             } else {
-                nc.gadRead(permAddr, 'temperature/0', 'sensorValue', function (err, result) {
+                nc.gadRead(permAddr1, 'temperature/0', 'sensorValue', function (err, result) {
                     if (err) {
                         console.log(err);
                     } else if (result === 25) {
@@ -360,26 +513,58 @@ describe('Gadget Drivers Check', function () {
         });
     });
 
+    it('write() - device2', function (done) {
+        nc.gadWrite(permAddr2, 'humidity/0', 'sensorValue', 55, function (err, result) {
+            if (err) {
+                console.log(err);
+            } else {
+                nc.gadRead(permAddr2, 'humidity/0', 'sensorValue', function (err, result) {
+                    if (err) {
+                        console.log(err);
+                    } else if (result === 55) {
+                        done();
+                    }
+                });
+            }
+        });
+    });
+
+    it('write() - device3', function (done) {
+        nc.gadWrite(permAddr3, 'generic/0', 'sensorValue', 88, function (err, result) {
+            if (err) {
+                console.log(err);
+            } else {
+                nc.gadRead(permAddr3, 'generic/0', 'sensorValue', function (err, result) {
+                    if (err) {
+                        console.log(err);
+                    } else if (result === 88) {
+                        done();
+                    }
+                });
+            }
+        });
+    });
+
     it('write() - bad request', function (done) {
-        nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 'bad', function (err, result) {
+        nc.gadWrite(permAddr1, 'temperature/0', 'sensorValue', 'bad', function (err, result) {
             if (err) done();
         });
     });
 
     it('write() - not found', function (done) {
-        nc.gadWrite(permAddr, 'temperature/0', 'foo', 25, function (err, result) {
+        nc.gadWrite(permAddr1, 'temperature/0', 'foo', 25, function (err, result) {
             if (err) done();
         });
     });
 
     it('write() - not allowed', function (done) {
-        nc.gadWrite(permAddr, 'temperature/0', '5702', 25, function (err, result) {
+        nc.gadWrite(permAddr1, 'temperature/0', '5702', 25, function (err, result) {
             if (err) done();
         });
     });
 
     it('exec()', function (done) {
-        nc.gadExec(permAddr, 'temperature/0', '5704', ['Peter', 'KSHMR'], function (err, result) {
+        nc.gadExec(permAddr1, 'temperature/0', '5704', ['Peter', 'KSHMR'], function (err, result) {
             if (err) {
                 console.log(err);
             } else {
@@ -389,13 +574,13 @@ describe('Gadget Drivers Check', function () {
     });
 
     it('exec() - not found', function (done) {
-        nc.gadExec(permAddr, 'temperature/0', 'foo', [], function (err, result) {
+        nc.gadExec(permAddr1, 'temperature/0', 'foo', [], function (err, result) {
             if (err) done();
         });
     });
 
     it('exec() - not allowed', function (done) {
-        nc.gadExec(permAddr, 'temperature/0', 'sensorValue', [], function (err, result) {
+        nc.gadExec(permAddr1, 'temperature/0', 'sensorValue', [], function (err, result) {
             if (err) done();
         });
     });
@@ -409,7 +594,7 @@ describe('Gadget Drivers Check', function () {
             gt: 5
         };
 
-        nc.setReportCfg(permAddr, 'temperature/0', 'sensorValue', cfg, function (err, result) {
+        nc.setReportCfg(permAddr1, 'temperature/0', 'sensorValue', cfg, function (err, result) {
             if (result === true) done();
         });
     });
@@ -432,15 +617,72 @@ describe('Gadget Drivers Check', function () {
             enable: true
         };
 
-        nc.setReportCfg(permAddr, 'temperature/0', 'sensorValue', cfg, function (err, result) {
+        nc.setReportCfg(permAddr1, 'temperature/0', 'sensorValue', cfg, function (err, result) {
             if (result === true) {
                 nc._controller.on('ind', devReportHdlr);
-                nc.gadWrite(permAddr, 'temperature/0', 'sensorValue', 40, function (err, result) {
+                nc.gadWrite(permAddr1, 'temperature/0', 'sensorValue', 40, function (err, result) {
                     if (err) console.log(err);
                 });
             }  
         });
+    });
 
+
+    it('setReportCfg() - enable true - device2', function (done) {
+        var devReportHdlr = function (msg) {
+                switch(msg.type) {
+                    case 'notify':
+                            if (msg.data.value === 50) {
+                                nc._controller.removeListener('ind', devReportHdlr);
+                                done(); 
+                            }
+                        break;
+                    default:
+                        break;
+                }
+            };
+
+        cfg = {
+            enable: true
+        };
+
+        nc.setReportCfg(permAddr2, 'humidity/0', 'sensorValue', cfg, function (err, result) {
+            if (result === true) {
+                nc._controller.on('ind', devReportHdlr);
+                nc.gadWrite(permAddr2, 'humidity/0', 'sensorValue', 50, function (err, result) {
+                    if (err) console.log(err);
+                });
+            }  
+        });
+    });
+
+
+    it('setReportCfg() - enable true - device3', function (done) {
+        var devReportHdlr = function (msg) {
+                switch(msg.type) {
+                    case 'notify':
+                            if (msg.data.value === 80) {
+                                nc._controller.removeListener('ind', devReportHdlr);
+                                done(); 
+                            }
+                        break;
+                    default:
+                        break;
+                }
+            };
+
+        cfg = {
+            enable: true
+        };
+
+        nc.setReportCfg(permAddr3, 'generic/0', 'sensorValue', cfg, function (err, result) {
+            if (result === true) {
+                nc._controller.on('ind', devReportHdlr);
+                nc.gadWrite(permAddr3, 'generic/0', 'sensorValue', 80, function (err, result) {
+                    if (err) console.log(err);
+                });
+            }  
+        });
     });
 
     it('setReportCfg() - enable false', function (done) {
@@ -448,7 +690,7 @@ describe('Gadget Drivers Check', function () {
             enable: false
         };
 
-        nc.setReportCfg(permAddr, 'temperature/0', 'sensorValue', cfg, function (err, result) {
+        nc.setReportCfg(permAddr1, 'temperature/0', 'sensorValue', cfg, function (err, result) {
             if (result === true) done();
         });
     });
@@ -458,7 +700,7 @@ describe('Gadget Drivers Check', function () {
             foo: false
         };
 
-        nc.setReportCfg(permAddr, 'temperature/0', 'sensorValue', cfg, function (err, result) {
+        nc.setReportCfg(permAddr1, 'temperature/0', 'sensorValue', cfg, function (err, result) {
             if (err) done();
         });
     });
@@ -469,7 +711,7 @@ describe('Gadget Drivers Check', function () {
             pmax: 60
         };
 
-        nc.setReportCfg(permAddr, 'temperature/0', 'foo', cfg, function (err, result) {
+        nc.setReportCfg(permAddr1, 'temperature/0', 'foo', cfg, function (err, result) {
             if (err) done();
         });
     });
@@ -480,14 +722,36 @@ describe('Gadget Drivers Check', function () {
             pmax: 60,
         };
 
-        nc.getReportCfg(permAddr, 'temperature/1', 'sensorValue', function (err, result) {
+        nc.getReportCfg(permAddr1, 'temperature/1', 'sensorValue', function (err, result) {
             if (_.isEqual(result, cfg)) done();
         });
     });
 
     it('getReportCfg() - not found', function (done) {
-        nc.getReportCfg(permAddr, 'temperature/1', 'foo', function (err, result) {
+        nc.getReportCfg(permAddr1, 'temperature/1', 'foo', function (err, result) {
             if (err) done();
+        });
+    });
+
+    it('getReportCfg() - device2', function (done) {
+        cfg = {
+            pmin: 0,
+            pmax: 60,
+        };
+
+        nc.getReportCfg(permAddr2, 'humidity/0', 'sensorValue', function (err, result) {
+            if (_.isEqual(result, cfg)) done();
+        });
+    });
+
+    it('getReportCfg() - device3', function (done) {
+        cfg = {
+            pmin: 0,
+            pmax: 60,
+        };
+
+        nc.getReportCfg(permAddr3, 'generic/0', 'sensorValue', function (err, result) {
+            if (_.isEqual(result, cfg)) done();
         });
     });
 });

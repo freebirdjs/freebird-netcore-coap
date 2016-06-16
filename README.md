@@ -177,7 +177,7 @@ Ping a remote device.
 **Arguments:**  
 
 1. `permAddr` (_String_): Permanent address of the device.
-2. `callback` (_Function_): `function (err, result) { }`.  
+2. `callback` (_Function_): `function (err, result) { }`. The `result` is the approximate round trip time in milliseconds.
 
 **Returns:**  
 
@@ -207,7 +207,7 @@ Read an attribute from the remote device.
 
 1. `permAddr` (_String_): Permanent address of the device.
 2. `attrName` (_String_): The attribute you want to read.
-3. `callback` (_Function_): `function (err) { }`.  
+3. `callback` (_Function_): `function (err, result) { }`. The `result` is the read value.
 
 **Returns:**  
 
@@ -231,7 +231,7 @@ Write a value to an attribute to the remote device.
 1. `permAddr` (_String_): Permanent address of the device.
 2. `attrName` (_String_): The attribute to be written.
 3. `value` (_Depends_): The value to write to the attribute. 
-4. `callback` (_Function_): `function (err) { }`.  
+4. `callback` (_Function_): `function (err, result) { }`. The `result` is the written value.
 
 **Returns:**  
 
@@ -259,10 +259,10 @@ Remotely read an attribute from a gadget on the remote device.
 
 **Arguments:**  
 
-1. `permAddr` (_String_): Permanent address of the device.
-2. `auxId` (_String_): The auxiliary id of which gadget you want to read from.
-3. `attrName` (_String_): The attribute you want to read.
-4. `callback` (_Function_): `function (err) { }`.   
+1. `permAddr` (_String_): Permanent address of the device.  
+2. `auxId` (_String_): The auxiliary id of which gadget you want to read from.  
+3. `attrName` (_String_): The attribute you want to read.  
+4. `callback` (_Function_): `function (err, result) { }`. The `result` is the read value.  
 
 **Returns:**  
 
@@ -284,10 +284,10 @@ Remotely write an attribute to a gadget on the remote device.
 **Arguments:**  
 
 1. `permAddr` (_String_): Permanent address of the device.  
-2. `auxId` (_String_): The auxiliary id of which gadget you want to write to.
-3. `attrName` (_String_): The attribute to be written.
+2. `auxId` (_String_): The auxiliary id of which gadget you want to write to.  
+3. `attrName` (_String_): The attribute to be written.  
 4. `value` (_Depends_): The value to write to the attribute.  
-5. `callback` (_Function_): `function (err) { }`.  
+5. `callback` (_Function_): `function (err, result) { }`. The `result` is the written value.  
 
 **Returns:**  
 
@@ -312,7 +312,7 @@ Issue a remote procedure call to a gadget on the remote device.
 2. `auxId` (_String_): The auxiliary id of which gadget to perform its particular procedure.
 3. `attrName` (_String_): The attribute name of an executable procedure.
 4. `args` (_Array_): The arguments to the procedure.
-5. `callback` (_Function_): `function (err) { }`.  
+5. `callback` (_Function_): `function (err, result) { }`. The `result` is a boolean, it will be true if operation is completed successfully, else false.
 
 **Returns:**  
 
@@ -349,7 +349,7 @@ Set the report configuration to a gadget on the remote device.
     | stp      | Number  | No       | Step. The gadget should notify its value when the change of the attribute value, since the last report happened, is greater than this setting. |
     | enable   | Boolean | No       | It is set to true for the gadget to start reporting an attribute. Set to false to stop reporting. |
 
-5. `callback` (_Function_): `function (err) { }`.  
+5. `callback` (_Function_): `function (err, result) { }`. The `result` is a boolean, it will be true if operation is completed successfully, else false.
 
 **Returns:**  
 
@@ -378,7 +378,7 @@ Get the report configuration from a gadget on the remote device.
 1. `permAddr` (_String_): Permanent address of the device.
 2. `auxId` (_String_): The auxiliary id of which gadget you want to get from.
 3. `attrName` (_String_): The attribute you want to get report configuration.
-4. `callback` (_Function_): `function (err) { }`.   
+4. `callback` (_Function_): `function (err, result) { }`. The `result` is report configuration settings object.
 
 **Returns:**  
 
