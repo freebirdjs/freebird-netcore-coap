@@ -30,7 +30,25 @@ freebird-netcore-coap
 ## 3. Basic Usage 
 
 ```js
+var Freebird = require('freebird'),
+    coapCore = require('freeebird-netcore-coap'),
+    http = require('http');
 
+var httpServer = http.createServer();
+httpServer.listen(3000);
+
+var freebird = new Freebird(httpServer);
+
+freebird.registerNetcore(coapCore, function (err) {
+    if (err)
+        console.log('err');
+});
+
+// after registered this netcore, start the freebird server
+freebird.start(function (err) {
+    var coapCoreName = coapCore.getName();      // 'freeebird-netcore-coap'
+    freebird.net.permitJoin(coapCoreName, 300); // Let your coap peripheral machines join the network
+});
 ```
 
 <a name="APIs"></a>
@@ -164,7 +182,7 @@ Remove a remote device from the network.
 **Examples:** 
 
 ```js
-nc.remove('AA:BB:CC:DD:EE:FF', function (err) {
+nc.remove('AA:BB:CC:DD:EE:FF/1', function (err) {
     if (err) console.log(err);
 });
 ```
@@ -186,7 +204,7 @@ Ping a remote device.
 **Examples:** 
 
 ```js
-nc.ping('AA:BB:CC:DD:EE:FF', function (err, result) {
+nc.ping('AA:BB:CC:DD:EE:FF/1', function (err, result) {
     console.log(result);    // 10 
 });
 ```
@@ -216,7 +234,7 @@ Read an attribute from the remote device.
 **Examples:** 
 
 ```js
-dev.read('AA:BB:CC:DD:EE:FF', 'manufacturer', function (err, result) {
+dev.read('AA:BB:CC:DD:EE:FF/1', 'manufacturer', function (err, result) {
     console.log(result);    // 'freebird'
 });
 ```
@@ -240,7 +258,7 @@ Write a value to an attribute to the remote device.
 **Examples:** 
 
 ```js
-dev.write('AA:BB:CC:DD:EE:FF', 'model', 'coap-7688-duo', function (err, result) {
+dev.write('AA:BB:CC:DD:EE:FF/1', 'model', 'coap-7688-duo', function (err, result) {
     console.log(result);    // 'coap-7688-duo'
 });
 ```
@@ -271,7 +289,7 @@ Remotely read an attribute from a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.read('AA:BB:CC:DD:EE:FF', 'temperature/0', 'sensorValue', function (err, result) {
+gad.read('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
     console.log(result);    // 31
 });
 ```
@@ -296,7 +314,7 @@ Remotely write an attribute to a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.write('AA:BB:CC:DD:EE:FF', 'temperature/0', 'sensorValue', 38, function (err, result) {
+gad.write('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', 38, function (err, result) {
     console.log(result);    // 38
 });
 ```
@@ -323,7 +341,7 @@ Issue a remote procedure call to a gadget on the remote device.
 ```js
 var args = [ 10 ];
 
-gad.exec('AA:BB:CC:DD:EE:FF', 'lightCtrl/0', 'blink', args, function (err, result) {
+gad.exec('AA:BB:CC:DD:EE:FF/1', 'lightCtrl/0', 'blink', args, function (err, result) {
     console.log(result);    // true
 });
 ```
@@ -363,7 +381,7 @@ var cfg = {
     enable: true
 };
 
-gad.setReportCfg('AA:BB:CC:DD:EE:FF', 'temperature/0', 'sensorValue', cfg, function (err, result) {
+gad.setReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', cfg, function (err, result) {
     console.log(result);    // true
 });
 ```
@@ -387,7 +405,7 @@ Get the report configuration from a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.getReportCfg('AA:BB:CC:DD:EE:FF', 'temperature/0', 'sensorValue', function (err, result) {
+gad.getReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
     console.log(result);    // {
                             //    pmin: 0,
                             //    pmax: 60

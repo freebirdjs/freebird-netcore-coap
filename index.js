@@ -1,4 +1,4 @@
-var _ = require('lodash'),
+var _ = require('busyman'),
     cShepherd = require('coap-shepherd'),
     fbBase = require('freebird-base'),
     Netcore = fbBase.Netcore;
@@ -22,7 +22,7 @@ var coapNc = function () {
     cserver.on('ready', shepherdReadyHdlr);
     cserver.on('ind', shepherdEvtHdlr);
 
-    nc = new Netcore('coapcore', cserver, {phy: 'coap', nwk: 'coap'});
+    nc = new Netcore('freebird-netcore-coap', cserver, {phy: 'coap', nwk: 'coap'});
     nc.cookRawDev = cookRawDev;
     nc.cookRawGad = cookRawGad;
 
@@ -203,40 +203,34 @@ netDrvs.permitJoin = function (duration, callback) {
 };
 
 netDrvs.remove = function (permAddr, callback) {
-    var dev = findCnode(permAddr),
-        clientName;
-
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));
-    } else {
-        clientName = dev.clientName;
-        cserver.remove(clientName, callback);
-    }
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);
+        } else {
+            cserver.remove(dev.clientName, callback);
+        }
+    });
 };
 
 netDrvs.ping = function (permAddr, callback) {
-    var dev = findCnode(permAddr);
-
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));
-    } else {        
-        dev.ping(function (err, rsp) {
-            callback(err, rsp.data);
-        });
-    }
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);
+        } else {        
+            dev.ping(function (err, rsp) {
+                callback(err, rsp.data);
+            });
+        }
+    });
 };
 
 // Optional
 netDrvs.ban = function (permAddr, callback) {
-    var dev = findCnode(permAddr);
-
     
 };
 
 // Optional
 netDrvs.unban = function (permAddr, callback) {
-    var dev = findCnode(permAddr);
-
     
 };
 
@@ -244,71 +238,77 @@ netDrvs.unban = function (permAddr, callback) {
 /*** Device drivers                                                                            ***/
 /*************************************************************************************************/
 devDrvs.read = function (permAddr, attr, callback) {
-    var dev = findCnode(permAddr),
-        result = {},
+    var result = {},
         attrPath = getDevAttrPath(attr);
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));  
-    } else if (attr === 'version' && attrPath) {
-        dev.read(attrPath, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);  
+        } else {
+            if (attr === 'version' && attrPath) {
+                dev.read(attrPath, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
 
-            if (err) {
-                callback(err);
+                    if (err) {
+                        callback(err);
+                    } else {
+                        result.fw = rsp.data.firmware;
+                        result.hw = rsp.data.hwVer;
+                        result.sw = rsp.data.swVer;
+                        callback(null, result);
+                    }
+                });
+            } else if (attr === 'power' && attrPath) {
+                dev.read(attrPath, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
+
+                    if (err) {
+                        callback(err);
+                    } else {
+                        result.type = value.availPwrSrc;
+                        result.voltage = value.pwrSrcVoltage;
+                        callback(null, result);
+                    }
+                });
+            } else if (attrPath) {
+                dev.read(attrPath, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
+
+                    if (err)
+                        callback(err);
+                    else 
+                        callback(null, rsp.data);
+                });
             } else {
-                result.fw = rsp.data.firmware;
-                result.hw = rsp.data.hwVer;
-                result.sw = rsp.data.swVer;
-                callback(null, result);
+                callback(new Error('attr: ' + attr + ' not exist.'));
             }
-        });
-    } else if (attr === 'power' && attrPath) {
-        dev.read(attrPath, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            if (err) {
-                callback(err);
-            } else {
-                result.type = value.availPwrSrc;
-                result.voltage = value.pwrSrcVoltage;
-                callback(null, result);
-            }
-        });
-    } else if (attrPath) {
-        dev.read(attrPath, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            if (err)
-                callback(err);
-            else 
-                callback(null, rsp.data);
-        });
-    } else {
-        callback(new Error('attr: ' + attr + ' not exist.'));
-    }
+        }
+    });
 };
 
 devDrvs.write = function (permAddr, attr, val, callback) {
-    var dev = findCnode(permAddr),
-        attrPath = getDevAttrPath(attr);
+    var attrPath = getDevAttrPath(attr);
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));  
-    } else if (attrPath) {
-        dev.write(attrPath, val, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);  
+        } else {
+            if (attrPath) {
+                dev.write(attrPath, val, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
 
-            if (_.isFunction(callback)) {
-                if (err)
-                    callback(err);
-                else
-                    callback(null, val);
+                    if (_.isFunction(callback)) {
+                        if (err)
+                            callback(err);
+                        else
+                            callback(null, val);
+                    }
+                });
+            } else {
+                callback(new Error('attr: ' + attr + ' not exist.'));
             }
-        });
-    } else {
-        callback(new Error('attr: ' + attr + ' not exist.'));
-    }
+        }
+    });
 };
 
 // Optional
@@ -320,69 +320,71 @@ devDrvs.identify = function (permAddr, callback) {
 /*** Gadget drivers                                                                            ***/
 /*************************************************************************************************/
 gadDrvs.read = function (permAddr, auxId, attr, callback) {
-    var dev = findCnode(permAddr),
-        path = auxId + '/' + attr;
+    var path = auxId + '/' + attr;
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr)); 
-    } else {  
-        dev.read(path, function(err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err); 
+        } else {  
+            dev.read(path, function(err, rsp) {
+                err = err || rspStatusChk(rsp.status);
 
-            if (err) 
-                callback(err);
-            else 
-                callback(null, rsp.data);
-        });
-    }
+                if (err) 
+                    callback(err);
+                else 
+                    callback(null, rsp.data);
+            });
+        }
+    });
 };
 
 gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
-    var dev = findCnode(permAddr),
-        path = auxId + '/' + attr;
+    var path = auxId + '/' + attr;
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));
-    } else { 
-        dev.write(path, val, function(err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);
+        } else { 
+            dev.write(path, val, function(err, rsp) {
+                err = err || rspStatusChk(rsp.status);
 
-            if (err)
-                callback(err);
-            else 
-                callback(null, val);
-        });
-    }
+                if (err)
+                    callback(err);
+                else 
+                    callback(null, val);
+            });
+        }
+    });
 };
 
 // Optional
 gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
-    var dev = findCnode(permAddr),
-        path = auxId + '/' + attr;
+    var path = auxId + '/' + attr;
 
     if (_.isFunction(args)) {
         callback = args;
         args = [];
     }
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr), false);  
-    } else {
-        dev.execute(path, args, function(err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err, false);  
+        } else {
+            dev.execute(path, args, function(err, rsp) {
+                err = err || rspStatusChk(rsp.status);
 
-            if (err)
-                callback(err, false);
-            else 
-                callback(null, true);
-        });
-    }
+                if (err)
+                    callback(err, false);
+                else 
+                    callback(null, true);
+            });
+        }
+    });
 };
 
 // Optional
 gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
-    var dev = findCnode(permAddr),
-        path = auxId + '/' + attr,
+    var path = auxId + '/' + attr,
         enable = cfg.enable,
         chkErr = null;
 
@@ -395,74 +397,79 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
             cb(null, true);
     }
 
-    if (!dev) {
-        invokeCb(new Error('No such item of permAddr: ' + permAddr), callback);  
-    } else if (!_.isEmpty(cfg) && enable === true) {
-        dev.writeAttrs(path, cfg, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            invokeCb(err, callback);  
+        } else {
+            if (!_.isEmpty(cfg) && enable === true) {
+                dev.writeAttrs(path, cfg, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
 
-            if (err) {
-                callback(err, false);
-            } else {
+                    if (err) {
+                        callback(err, false);
+                    } else {
+                        dev.observe(path, function (err, rsp) {
+                            err = err || rspStatusChk(rsp.status);
+
+                            invokeCb(err, callback);
+                        });
+                    }
+                });
+            } else if (!_.isEmpty(cfg) && enable === false) {
+                dev.writeAttrs(path, cfg, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
+
+                    if (err) {
+                        callback(err, false);
+                    } else {
+                        dev.cancelObserve(path, function (err, rsp) {
+                            err = err || rspStatusChk(rsp.status);
+
+                            invokeCb(err, callback);
+                        });
+                    }
+                });
+            } else if (!_.isEmpty(cfg)) {
+                dev.writeAttrs(path, cfg, function (err, rsp) {
+                    err = err || rspStatusChk(rsp.status);
+
+                    invokeCb(err, callback);
+                });
+            } else if (_.isEmpty(cfg) && enable === true) {
                 dev.observe(path, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     invokeCb(err, callback);
                 });
-            }
-        });
-    } else if (!_.isEmpty(cfg) && enable === false) {
-        dev.writeAttrs(path, cfg, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            if (err) {
-                callback(err, false);
-            } else {
+            } else if (_.isEmpty(cfg) && enable === false) {
                 dev.cancelObserve(path, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     invokeCb(err, callback);
                 });
             }
-        });
-    } else if (!_.isEmpty(cfg)) {
-        dev.writeAttrs(path, cfg, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            invokeCb(err, callback);
-        });
-    } else if (_.isEmpty(cfg) && enable === true) {
-        dev.observe(path, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            invokeCb(err, callback);
-        });
-    } else if (_.isEmpty(cfg) && enable === false) {
-        dev.cancelObserve(path, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
-
-            invokeCb(err, callback);
-        });
-    }
+        }    
+    });
 };
 
 // Optional
 gadDrvs.getReportCfg = function (permAddr, auxId, attr, callback) {
-    var dev = findCnode(permAddr),
-        path = auxId + '/' + attr;
+    var path = auxId + '/' + attr;
 
-    if (!dev) {
-        callback(new Error('No such item of permAddr: ' + permAddr));  
-    } else {
-        dev.discover(path, function (err, rsp) {
-            err = err || rspStatusChk(rsp.status);
+    findCnode(permAddr, function (err, dev) {
+        if (err) {
+            callback(err);  
+        } else {
+            dev.discover(path, function (err, rsp) {
+                err = err || rspStatusChk(rsp.status);
 
-            if (err)
-                callback(err);
-            else 
-                callback(null, rsp.data.attrs);
-        });
-    }
+                if (err)
+                    callback(err);
+                else 
+                    callback(null, rsp.data.attrs);
+            });
+        }
+    });
 };
 
 /*************************************************************************************************/
@@ -540,26 +547,30 @@ function parsePermAddr (permAddr) {
     };
 }
 
-function findCnode(permAddr) {
-    var cnode,
+function findCnode(permAddr, callback) {
+    var err,
+        cnode,
         cnodes,
         parsedAddr = parsePermAddr(permAddr);
-        
+
     if (parsedAddr.clientId)
         cnode = cserver._findByClientId(parsedAddr.clientId);
 
     if (cnode) {
-        return cnode;
+        callback(null, cnode);
+        return;
     } else {
         cnodes = cserver._findByMacAddr(parsedAddr.mac);
 
         if (cnodes.length === 0)
-            return null;
+            err = new Error('No such item of permAddr: ' + permAddr);
         else if (cnodes.length !== 1)
-            return null;
+            err = new Error('Ambiguous address, multiple targets found.');
         else
-            return cnodes[0];
+            cnode = cnodes[0];            
     }
+
+    callback(err, cnode);
 }
 
 function getDevAttrPath(attr) {

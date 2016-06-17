@@ -16,7 +16,8 @@ var coapNode1 = new CoapNode('nodeTest1'),
     }),
     permAddr1, 
     permAddr2, 
-    permAddr3;
+    permAddr3,
+    mac;
 
 /**********************************************************************/
 /* mock object                                                        */
@@ -237,6 +238,7 @@ describe('Netcore Drivers Check', function () {
                     case 'registered':
                         clientName = msg.data.clientName;
                         permAddr1 = msg.data.mac + '/' + msg.data.clientId;
+                        mac = msg.data.mac;
 
                         if (clientName === 'nodeTest1') {
                             nc._controller.removeListener('ind', devRegHdlr);
@@ -345,6 +347,14 @@ describe('Netcore Drivers Check', function () {
         coapNode3.register('127.0.0.1', 5683, function (err, rsp) {
             if(err) console.log(err);
         });     
+    });
+
+    it('multiple targets found',function (done) {
+        nc.ping(mac, function (err, result) {
+            if (err) {
+                done();
+            } 
+        });    
     });
 
     it('ban()', function (done) {
