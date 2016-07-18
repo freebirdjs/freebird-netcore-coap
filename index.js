@@ -22,7 +22,7 @@ var coapNc = function () {
     cserver.on('ready', shepherdReadyHdlr);
     cserver.on('ind', shepherdEvtHdlr);
 
-    nc = new Netcore('freebird-netcore-coap', cserver, {phy: 'coap', nwk: 'coap'});
+    nc = new Netcore('coapcore', cserver, {phy: 'coap', nwk: 'coap'});
     nc.cookRawDev = cookRawDev;
     nc.cookRawGad = cookRawGad;
 
@@ -246,7 +246,7 @@ devDrvs.read = function (permAddr, attr, callback) {
             callback(err);  
         } else {
             if (attr === 'version' && attrPath) {
-                dev.read(attrPath, function (err, rsp) {
+                dev.readReq(attrPath, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (err) {
@@ -259,7 +259,7 @@ devDrvs.read = function (permAddr, attr, callback) {
                     }
                 });
             } else if (attr === 'power' && attrPath) {
-                dev.read(attrPath, function (err, rsp) {
+                dev.readReq(attrPath, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (err) {
@@ -271,7 +271,7 @@ devDrvs.read = function (permAddr, attr, callback) {
                     }
                 });
             } else if (attrPath) {
-                dev.read(attrPath, function (err, rsp) {
+                dev.readReq(attrPath, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (err)
@@ -294,7 +294,7 @@ devDrvs.write = function (permAddr, attr, val, callback) {
             callback(err);  
         } else {
             if (attrPath) {
-                dev.write(attrPath, val, function (err, rsp) {
+                dev.writeReq(attrPath, val, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (_.isFunction(callback)) {
@@ -326,7 +326,7 @@ gadDrvs.read = function (permAddr, auxId, attr, callback) {
         if (err) {
             callback(err); 
         } else {  
-            dev.read(path, function(err, rsp) {
+            dev.readReq(path, function(err, rsp) {
                 err = err || rspStatusChk(rsp.status);
 
                 if (err) 
@@ -345,7 +345,7 @@ gadDrvs.write = function (permAddr, auxId, attr, val, callback) {
         if (err) {
             callback(err);
         } else { 
-            dev.write(path, val, function(err, rsp) {
+            dev.writeReq(path, val, function(err, rsp) {
                 err = err || rspStatusChk(rsp.status);
 
                 if (err)
@@ -370,7 +370,7 @@ gadDrvs.exec = function (permAddr, auxId, attr, args, callback) {
         if (err) {
             callback(err, false);  
         } else {
-            dev.execute(path, args, function(err, rsp) {
+            dev.executeReq(path, args, function(err, rsp) {
                 err = err || rspStatusChk(rsp.status);
 
                 if (err)
@@ -402,13 +402,13 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
             invokeCb(err, callback);  
         } else {
             if (!_.isEmpty(cfg) && enable === true) {
-                dev.writeAttrs(path, cfg, function (err, rsp) {
+                dev.writeAttrsReq(path, cfg, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (err) {
                         callback(err, false);
                     } else {
-                        dev.observe(path, function (err, rsp) {
+                        dev.observeReq(path, function (err, rsp) {
                             err = err || rspStatusChk(rsp.status);
 
                             invokeCb(err, callback);
@@ -416,13 +416,13 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
                     }
                 });
             } else if (!_.isEmpty(cfg) && enable === false) {
-                dev.writeAttrs(path, cfg, function (err, rsp) {
+                dev.writeAttrsReq(path, cfg, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     if (err) {
                         callback(err, false);
                     } else {
-                        dev.cancelObserve(path, function (err, rsp) {
+                        dev.cancelObserveReq(path, function (err, rsp) {
                             err = err || rspStatusChk(rsp.status);
 
                             invokeCb(err, callback);
@@ -430,19 +430,19 @@ gadDrvs.setReportCfg = function (permAddr, auxId, attr, cfg, callback) {
                     }
                 });
             } else if (!_.isEmpty(cfg)) {
-                dev.writeAttrs(path, cfg, function (err, rsp) {
+                dev.writeAttrsReq(path, cfg, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     invokeCb(err, callback);
                 });
             } else if (_.isEmpty(cfg) && enable === true) {
-                dev.observe(path, function (err, rsp) {
+                dev.observeReq(path, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     invokeCb(err, callback);
                 });
             } else if (_.isEmpty(cfg) && enable === false) {
-                dev.cancelObserve(path, function (err, rsp) {
+                dev.cancelObserveReq(path, function (err, rsp) {
                     err = err || rspStatusChk(rsp.status);
 
                     invokeCb(err, callback);
@@ -460,7 +460,7 @@ gadDrvs.getReportCfg = function (permAddr, auxId, attr, callback) {
         if (err) {
             callback(err);  
         } else {
-            dev.discover(path, function (err, rsp) {
+            dev.discoverReq(path, function (err, rsp) {
                 err = err || rspStatusChk(rsp.status);
 
                 if (err)

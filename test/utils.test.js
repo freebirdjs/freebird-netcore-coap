@@ -1,17 +1,69 @@
 var should = require('should'),
-    _ = require('lodash'),
+    _ = require('busyman'),
     Netcore = require('freebird-base').Netcore,
     Device = require('freebird-base').Device,
     Gadget = require('freebird-base').Gadget,
-    CoapNode = require('coap-node');
+    CoapNode = require('coap-node'),
+    SmartObject = require('smartobject');
 
 var nc = require('../index');
 
-var coapNode1 = new CoapNode('nodeTest1'),
-    coapNode2 = new CoapNode('nodeTest2', {
+var so1 = new SmartObject(),
+    so2 = new SmartObject(),
+    so3 = new SmartObject();
+
+/**********************************************************************/
+/* coapNode1 init resource                                            */
+/**********************************************************************/
+so1.init('temperature', 0, {
+    sensorValue: 21,
+    units: 'C',
+    5702: { 
+        read: function (cb) {
+            var time = new Date();
+            cb(null, time.toString());
+        }
+    },
+    5703: { 
+        write: function (val, cb) {
+            console.log('write ' + val);
+            cb(null, val);
+        }
+    },
+    5704: { 
+        exec: function (val1, val2, cb) {
+            console.log(val1 + ': Hello ' + val2 + '!');
+            cb(null);
+        }
+    }
+});
+
+so1.init('temperature', 1, {
+    5700: 70,
+    5701: 'F'
+});
+
+/**********************************************************************/
+/* coapNode2 init resource                                            */
+/**********************************************************************/
+so2.init('humidity', 0, {
+    sensorValue: 56,
+    units: '%'
+});
+
+/**********************************************************************/
+/* coapNode3 init resource                                            */
+/**********************************************************************/
+so3.init('generic', 0, {
+    sensorValue: 87
+});
+
+
+var coapNode1 = new CoapNode('nodeTest1', so1),
+    coapNode2 = new CoapNode('nodeTest2', so2, {
         manuf: 'freebird'
     }),
-    coapNode3 = new CoapNode('nodeTest3', {
+    coapNode3 = new CoapNode('nodeTest3', so3, {
         model: 'coap-7688'
     }),
     permAddr1, 
@@ -86,52 +138,6 @@ var dev = new Device(nc, rawDev),
     gad = new Gadget(dev, 'temperature/1', rawGad);
 
 /**********************************************************************/
-/* coapNode1 init resource                                            */
-/**********************************************************************/
-coapNode1.initResrc('temperature', 0, {
-    sensorValue: 21,
-    units: 'C',
-    5702: { 
-        read: function (cb) {
-            var time = new Date();
-            cb(null, time.toString());
-        }
-    },
-    5703: { 
-        write: function (val, cb) {
-            console.log('write ' + val);
-            cb(null, val);
-        }
-    },
-    5704: { 
-        exec: function (val1, val2, cb) {
-            console.log(val1 + ': Hello ' + val2 + '!');
-            cb(null);
-        }
-    }
-});
-
-coapNode1.initResrc('temperature', 1, {
-    5700: 70,
-    5701: 'F'
-});
-
-/**********************************************************************/
-/* coapNode2 init resource                                            */
-/**********************************************************************/
-coapNode2.initResrc('humidity', 0, {
-    sensorValue: 56,
-    units: '%'
-});
-
-/**********************************************************************/
-/* coapNode3 init resource                                            */
-/**********************************************************************/
-coapNode3.initResrc('generic', 0, {
-    sensorValue: 87
-});
-
-/**********************************************************************/
 /* test                                                               */
 /**********************************************************************/
 describe('Cook Functional Check', function() {
@@ -146,16 +152,21 @@ describe('Cook Functional Check', function() {
                 attrInfo = {
                     manufacturer: 'sivann',
                     model: 'cnode-01',
+                    serial: undefined,
                     version: {
                         hw: 'v1.0', 
                         sw: 'v1.0', 
-                        fw: 'v1.0'}
+                        fw: 'v1.0'},
+                    power: { 
+                        type: undefined, 
+                        voltage: undefined 
+                    }
                 };
 
             if (err) {
                 console.log(err);
             } else {
-                if (_.isMatch(cooked._net, netInfo) && _.isMatch(cooked._attrs, attrInfo))
+                if (_.isEqual(cooked._net.address, netInfo.address) && _.isEqual(cooked._attrs, attrInfo))
                     done();
             }
         });
@@ -164,6 +175,8 @@ describe('Cook Functional Check', function() {
     it('cookRawGad()', function (done) {
         nc.cookRawGad(gad, rawGad, function (err, cooked) {
             var panelInfo = {
+                    enabled: false, 
+                    profile: null,
                     classId: 'temperature'
                 },
                 attrInfo = {
@@ -174,7 +187,7 @@ describe('Cook Functional Check', function() {
             if (err) {
                 console.log(err);
             } else {
-                if (_.isMatch(cooked._panel, panelInfo) && _.isMatch(cooked._attrs , attrInfo))
+                if (_.isEqual(cooked._panel, panelInfo) && _.isEqual(cooked._attrs , attrInfo))
                     done();
             }
         });
@@ -419,12 +432,6 @@ describe('Device Drivers Check', function () {
         });
     });
 
-    it('write() - bad request', function (done) {
-        nc.devWrite(permAddr1, 'serial', 1000, function (err, result) {
-            if (err) done();
-        });
-    });
-
     it('write() - attr not exist', function (done) {
         nc.devWrite(permAddr1, 'foo', 'c-0001', function (err, result) {
             if (err) done();
@@ -552,12 +559,6 @@ describe('Gadget Drivers Check', function () {
                     }
                 });
             }
-        });
-    });
-
-    it('write() - bad request', function (done) {
-        nc.gadWrite(permAddr1, 'temperature/0', 'sensorValue', 'bad', function (err, result) {
-            if (err) done();
         });
     });
 
