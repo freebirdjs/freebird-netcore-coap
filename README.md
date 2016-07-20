@@ -46,7 +46,7 @@ freebird.registerNetcore(coapCore, function (err) {
 
 // after registered this netcore, start the freebird server
 freebird.start(function (err) {
-    var coapCoreName = coapCore.getName();      // 'freeebird-netcore-coap'
+    var coapCoreName = coapCore.getName();      // 'coapcore'
     freebird.net.permitJoin(coapCoreName, 300); // Let your coap peripheral machines join the network
 });
 ```
@@ -54,33 +54,21 @@ freebird.start(function (err) {
 <a name="APIs"></a>
 ## 4. APIs 
 
-#### 1. Netcore APIs
-
-* [nc.start()](#API_start)
-* [nc.stop()](#API_stop)
-* [nc.reset()](#API_reset)
-* [nc.permitJoin()](#API_permitJoin)
-* [nc.remove()](#API_remove)
-* [nc.ping()](#API_ping)
-
-#### 2. Device APIs
-
-* [dev.read()](#API_devRead)
-* [dev.write()](#API_devWrite)
-
-#### 3. Gadget APIs
-
-* [gad.read()](#API_devRead)
-* [gad.write()](#API_devWrite)
-* [gad.exec()](#API_devExec)
-* [gad.setReportCfg()](#API_devSetReportCfg)
-* [gad.getReportCfg()](#API_devGetReportCfg)
+* [start()](#API_start)
+* [stop()](#API_stop)
+* [reset()](#API_reset)
+* [permitJoin()](#API_permitJoin)
+* [remove()](#API_remove)
+* [ping()](#API_ping)
+* [devRead()](#API_devRead)
+* [devWrite()](#API_devWrite)
+* [gadRead()](#API_gadRead)
+* [gadWrite()](#API_gadWrite)
+* [gadExec()](#API_gadExec)
+* [setReportCfg()](#API_setReportCfg)
+* [getReportCfg()](#API_getReportCfg)
 
 *************************************************
-<a name="API_netcoreClass"></a>
-## Netcore Class
-
-
 <a name="API_start"></a>
 ### nc.start([callback])
 Start the network controller.
@@ -210,15 +198,8 @@ nc.ping('AA:BB:CC:DD:EE:FF/1', function (err, result) {
 ```
 
 *************************************************
-
-<br /> 
-
-<a name="API_deviceClass"></a>
-## Device Class
-
-
 <a name="API_devRead"></a>
-### dev.read(permAddr, attrName[, callback])
+### nc.devRead(permAddr, attrName[, callback])
 Read an attribute from the remote device.
 
 **Arguments:**  
@@ -234,14 +215,14 @@ Read an attribute from the remote device.
 **Examples:** 
 
 ```js
-dev.read('AA:BB:CC:DD:EE:FF/1', 'manufacturer', function (err, result) {
+nc.devRead('AA:BB:CC:DD:EE:FF/1', 'manufacturer', function (err, result) {
     console.log(result);    // 'freebird'
 });
 ```
 
 *************************************************
 <a name="API_devWrite"></a>
-### dev.write(permAddr, attrName, value[, callback])
+### nc.devWrite(permAddr, attrName, value[, callback])
 Write a value to an attribute to the remote device.
 
 **Arguments:**  
@@ -258,21 +239,14 @@ Write a value to an attribute to the remote device.
 **Examples:** 
 
 ```js
-dev.write('AA:BB:CC:DD:EE:FF/1', 'model', 'coap-7688-duo', function (err, result) {
+nc.devWrite('AA:BB:CC:DD:EE:FF/1', 'model', 'coap-7688-duo', function (err, result) {
     console.log(result);    // 'coap-7688-duo'
 });
 ```
 
 *************************************************
-
-<br /> 
-
-<a name="API_gadgetClass"></a>
-## Gadget Class
-
-
 <a name="API_gadRead"></a>
-### gad.read(permAddr, auxId, attrName[, callback])
+### nc.gadRead(permAddr, auxId, attrName[, callback])
 Remotely read an attribute from a gadget on the remote device.
 
 **Arguments:**  
@@ -289,14 +263,14 @@ Remotely read an attribute from a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.read('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
+nc.gadRead('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
     console.log(result);    // 31
 });
 ```
 
 *************************************************
 <a name="API_gadWrite"></a>
-### gad.write(permAddr, auxId, attrName, value[, callback])
+### nc.gadWrite(permAddr, auxId, attrName, value[, callback])
 Remotely write an attribute to a gadget on the remote device.
 
 **Arguments:**  
@@ -314,14 +288,14 @@ Remotely write an attribute to a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.write('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', 38, function (err, result) {
+nc.gadWrite('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', 38, function (err, result) {
     console.log(result);    // 38
 });
 ```
 
 *************************************************
 <a name="API_gadExec"></a>
-### gad.exec(permAddr, auxId, attrName[, args[, callback])
+### nc.gadExec(permAddr, auxId, attrName[, args[, callback])
 Issue a remote procedure call to a gadget on the remote device.
 
 **Arguments:**  
@@ -341,14 +315,14 @@ Issue a remote procedure call to a gadget on the remote device.
 ```js
 var args = [ 10 ];
 
-gad.exec('AA:BB:CC:DD:EE:FF/1', 'lightCtrl/0', 'blink', args, function (err, result) {
+nc.gadExec('AA:BB:CC:DD:EE:FF/1', 'lightCtrl/0', 'blink', args, function (err, result) {
     console.log(result);    // true
 });
 ```
 
 *************************************************
 <a name="API_setReportCfg"></a>
-### gad.setReportCfg(permAddr, auxId, attrName, cfg[, callback])
+### nc.setReportCfg(permAddr, auxId, attrName, cfg[, callback])
 Set the report configuration to a gadget on the remote device.
 
 **Arguments:**  
@@ -381,14 +355,14 @@ var cfg = {
     enable: true
 };
 
-gad.setReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', cfg, function (err, result) {
+nc.setReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', cfg, function (err, result) {
     console.log(result);    // true
 });
 ```
 
 *************************************************
-<a name="API_gadGetReportCfg"></a>
-### gad.getReportCfg(permAddr, auxId, attrName[, callback])
+<a name="API_getReportCfg"></a>
+### nc.getReportCfg(permAddr, auxId, attrName[, callback])
 Get the report configuration from a gadget on the remote device.
 
 **Arguments:**  
@@ -405,7 +379,7 @@ Get the report configuration from a gadget on the remote device.
 **Examples:** 
 
 ```js
-gad.getReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
+nc.getReportCfg('AA:BB:CC:DD:EE:FF/1', 'temperature/0', 'sensorValue', function (err, result) {
     console.log(result);    // {
                             //    pmin: 0,
                             //    pmax: 60
