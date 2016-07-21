@@ -17,12 +17,14 @@ var nc,
         'multipleAxisJoystick', 'rate', 'pushButton', 'multistateSelector', 'multistateSelector'],
     goodRsp = ['2.00', '2.01', '2.02', '2.03', '2.04', '2.05'];
 
-var coapNc = function () {
+var coapNc = function (name) {
+    var ncName = name || 'freebird-netcore-coap';
+
     cserver = cShepherd;
     cserver.on('ready', shepherdReadyHdlr);
     cserver.on('ind', shepherdEvtHdlr);
 
-    nc = new Netcore('coapcore', cserver, {phy: 'coap', nwk: 'coap'});
+    nc = new Netcore(ncName, cserver, {phy: 'coap', nwk: 'coap'});
     nc.cookRawDev = cookRawDev;
     nc.cookRawGad = cookRawGad;
 
@@ -620,4 +622,4 @@ function getDevAttrPath(attr) {
     return attrPath;
 }
 
-module.exports = coapNc();
+module.exports = coapNc;

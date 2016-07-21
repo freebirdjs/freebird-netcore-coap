@@ -12,9 +12,6 @@ freebird-netcore-coap
 2. [Installation](#Installation)  
 3. [Basic Usage](#Usage)  
 4. [APIs](#APIs)   
- * [Netcore Class](#API_netcoreClass)  
- * [Device Class](#API_deviceClass)  
- * [Gadget Class](#API_gadgetClass)  
 
 <a name="Overview"></a>
 ## 1. Overview 
@@ -31,7 +28,7 @@ freebird-netcore-coap
 
 ```js
 var Freebird = require('freebird'),
-    coapCore = require('freeebird-netcore-coap'),
+    coapCore = require('freeebird-netcore-coap')(),
     http = require('http');
 
 var httpServer = http.createServer();

@@ -6,7 +6,7 @@ var should = require('should'),
     CoapNode = require('coap-node'),
     SmartObject = require('smartobject');
 
-var nc = require('../index');
+var nc = require('../index')();
 
 var so1 = new SmartObject(),
     so2 = new SmartObject(),
