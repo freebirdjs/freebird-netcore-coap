@@ -195,7 +195,7 @@ describe('Cook Functional Check', function() {
 });
 
 describe('Netcore Drivers Check', function () {
-    this.timeout(3000);
+    this.timeout(5000);
 
     it('start()', function (done) {
         nc.start(function (err) {
@@ -242,15 +242,13 @@ describe('Netcore Drivers Check', function () {
         });
     }); 
 
-    this.timeout(10000);
-
     it('Device1 register', function (done) {
         var clientName,
             devRegHdlr = function (msg) {
                 switch(msg.type) {
                     case 'registered':
                         clientName = msg.data.clientName;
-                        permAddr1 = msg.data.mac + '/' + msg.data.clientId;
+                        permAddr1 = msg.data.mac + '/' + msg.data.clientName;
                         mac = msg.data.mac;
 
                         if (clientName === 'nodeTest1') {
@@ -283,7 +281,7 @@ describe('Netcore Drivers Check', function () {
                 switch(msg.type) {
                     case 'registered':
                         clientName = msg.data.clientName;
-                        permAddr1 = msg.data.mac + '/' + msg.data.clientId;
+                        permAddr1 = msg.data.mac + '/' + msg.data.clientName;
 
                         if (clientName === 'nodeTest1') {
                             nc._controller.removeListener('ind', devReRegHdlr);
@@ -318,7 +316,7 @@ describe('Netcore Drivers Check', function () {
                 switch(msg.type) {
                     case 'registered':
                         clientName = msg.data.clientName;
-                        permAddr2 = msg.data.mac + '/' + msg.data.clientId;
+                        permAddr2 = msg.data.mac + '/' + msg.data.clientName;
 
                         if (clientName === 'nodeTest2') {
                             nc._controller.removeListener('ind', devSecRegHdlr);
@@ -343,7 +341,7 @@ describe('Netcore Drivers Check', function () {
                 switch(msg.type) {
                     case 'registered':
                         clientName = msg.data.clientName;
-                        permAddr3 = msg.data.mac + '/' + msg.data.clientId;
+                        permAddr3 = msg.data.mac + '/' + msg.data.clientName;
 
                         if (clientName === 'nodeTest3') {
                             nc._controller.removeListener('ind', devThiRegHdlr);
@@ -360,14 +358,6 @@ describe('Netcore Drivers Check', function () {
         coapNode3.register('127.0.0.1', 5683, function (err, rsp) {
             if(err) console.log(err);
         });     
-    });
-
-    it('multiple targets found',function (done) {
-        nc.ping(mac, function (err, result) {
-            if (err) {
-                done();
-            } 
-        });    
     });
 
     it('ban()', function (done) {
