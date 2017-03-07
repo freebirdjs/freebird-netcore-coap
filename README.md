@@ -7,41 +7,42 @@ A CoAP machine network core for freebird framework.
 [![npm](https://img.shields.io/npm/v/freebird-netcore-coap.svg?maxAge=2592000)](https://www.npmjs.com/package/freebird-netcore-coap)
 [![npm](https://img.shields.io/npm/l/freebird-netcore-coap.svg?maxAge=2592000)](https://www.npmjs.com/package/freebird-netcore-coap)
 
-## Table of Contents 
+</br>
 
-1. [Overview](#Overview)  
-2. [Installation](#Installation)  
-3. [Basic Usage](#Usage)  
-4. [License](#License)   
+<a name="Documentation"></a>
+## Documentation 
+Please visit the [Wiki](https://github.com/freebirdjs/freebird-netcore-coap/wiki).
 
 <a name="Overview"></a>
-## 1. Overview 
+## Overview 
 
-**freebird-netcore-coap** 
+**freebird-netcore-coap** is the network controller (netcore) with managment facilities ready for [freebird](https://github.com/freebirdjs/freebird) IoT framework.
 
 <a name="Installation"></a>
-## 2. Installation 
+## Installation 
 
 > $ npm install freebird-netcore-coap --save
 
 <a name="Usage"></a>
-## 3. Basic Usage 
+## Basic Usage 
 
 ```js
 var Freebird = require('freebird'),
     coapCore = require('freebird-netcore-coap')();
 
+// Create the freebird server and register the freeebird-netcore-coap to it
 var freebird = new Freebird([coapCore]);
 
-// start the freebird server
+// Start the freebird server
 freebird.start(function (err) {
-    var coapCoreName = coapCore.getName();      // 'freebird-netcore-coap'
-
-    freebird.net.permitJoin(coapCoreName, 300); // Let your coap peripheral machines join the network
+	// Let your coap machines join the network
+    freebird.net.permitJoin(180); 
 });
+
+// That's it!
 ```
 
 <a name="License"></a>
-## 4. License 
+## License 
 
 Licensed under [MIT](https://github.com/freebirdjs/freebird-netcore-coap/blob/master/LICENSE).
