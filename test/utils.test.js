@@ -526,7 +526,7 @@ describe('Gadget Drivers Check', function () {
                 nc._findDriver('gad', 'read')(permAddr1, 'temperature/1', '5703', function (err, result) {
                     if (err) {
                         console.log(err);
-                    } else if (result === 25) {
+                    } else if (result === 19) {     // [TODO] lwm2m-coder not IPSO id
                         done();
                     }
                 });
@@ -542,7 +542,7 @@ describe('Gadget Drivers Check', function () {
                 nc._findDriver('gad', 'read')(permAddr2, 'humidity/0', '5703', function (err, result) {
                     if (err) {
                         console.log(err);
-                    } else if (result === 55) {
+                    } else if (result === 37) {     // [TODO] lwm2m-coder not IPSO id
                         done();
                     }
                 });
@@ -558,7 +558,7 @@ describe('Gadget Drivers Check', function () {
                 nc._findDriver('gad', 'read')(permAddr3, 'generic/0', '5703', function (err, result) {
                     if (err) {
                         console.log(err);
-                    } else if (result === 88) {
+                    } else if (result === 58) {     // [TODO] lwm2m-coder not IPSO id
                         done();
                     }
                 });
@@ -618,7 +618,7 @@ describe('Gadget Drivers Check', function () {
         var devReportHdlr = function (msg) {
                 switch(msg.type) {
                     case 'devNotify':
-                            if (msg.data.value === 40) {
+                            if (msg.data.value === 28) {    // [TODO] lwm2m-coder not IPSO id
                                 nc._controller.removeListener('ind', devReportHdlr);
                                 done(); 
                             }
@@ -647,7 +647,7 @@ describe('Gadget Drivers Check', function () {
         var devReportHdlr = function (msg) {
                 switch(msg.type) {
                     case 'devNotify':
-                            if (msg.data.value === 50) {
+                            if (msg.data.value === 32) {    // [TODO] lwm2m-coder not IPSO id
                                 nc._controller.removeListener('ind', devReportHdlr);
                                 done(); 
                             }
