@@ -1,6 +1,6 @@
 {
   "name": "freebird-netcore-coap",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "",
   "main": "netcode.js",
   "directories": {
@@ -8,12 +8,12 @@
   },
   "dependencies": {
     "busyman": "^0.3.0",
-    "coap-shepherd": "https://github.com/PeterEB/coap-shepherd/tarball/master",
+    "coap-shepherd": "0.2.5",
     "freebird-base": "^0.4.7"
   },
   "devDependencies": {
     "chai": "^3.5.0",
-    "coap-node": "0.2.4",
+    "coap-node": "0.2.5",
     "freebird": "^0.1.9",
     "freebird-constants": "^0.2.4",
     "mocha": "^2.5.3",
